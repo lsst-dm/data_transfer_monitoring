@@ -1,0 +1,22 @@
+{
+  "private_sndStamp": 1.7461931269903631E9,
+  "private_rcvStamp": 0.0,
+  "private_efdStamp": 1.7461930899903631E9,
+  "private_kafkaStamp": 1.7461931269903631E9,
+  "private_seqNum": 1449297,
+  "private_revCode": "834c6ef5",
+  "private_identity": "ocs-bridge",
+  "private_origin": 915296852,
+  "additionalKeys": "imageType:groupId:testType:stutterRows:stutterNShifts:stutterDelay:reason:program",
+  "additionalValues": "BIAS:2025-05-02T13\\:29\\:16.756:BIAS:0:0:0.0:BLOCK-T454:BLOCK-T454",
+  "imagesInSequence": 1,
+  "imageName": "MC_O_20250502_000010",
+  "imageIndex": 1,
+  "imageSource": "MC",
+  "imageController": "O",
+  "imageDate": "20250502",
+  "imageNumber": 10,
+  "timestampAcquisitionStart": 1.7461925242968068E9,
+  "requestedExposureTime": 0.0,
+  "timestampEndOfReadout": 1.746193126988771E9
+}

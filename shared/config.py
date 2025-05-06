@@ -1,0 +1,7 @@
+import os
+
+
+IS_PROD = os.environ["IS_PROD"]
+KAFKA_BOOTSTRAP_SERVERS = os.environ["KAFKA_BOOTSTRAP_SERVERS"]
+KAFKA_GROUP_ID = os.environ["KAFKA_GROUP_ID"]
+

@@ -1,0 +1,44 @@
+{
+  "Records": [
+    {
+      "eventVersion": "2.2",
+      "eventSource": "ceph:s3",
+      "awsRegion": "sdfembargo",
+      "eventTime": "2025-04-23T19:19:54.172258Z",
+      "eventName": "ObjectCreated:Put",
+      "userIdentity": {
+        "principalId": "rubin-summit"
+      },
+      "requestParameters": {
+        "sourceIPAddress": ""
+      },
+      "responseElements": {
+        "x-amz-request-id": "ca3988a8-0281-4a91-b15d-826d5c5fda24.51947757.5671713455102668246",
+        "x-amz-id-2": "318a8ed-sdfemb101-sdfembargo"
+      },
+      "s3": {
+        "s3SchemaVersion": "1.0",
+        "configurationId": "rubin-summit-notification",
+        "bucket": {
+          "name": "rubin-summit",
+          "ownerIdentity": {
+            "principalId": "rubin-summit"
+          },
+          "arn": "arn:aws:s3:sdfembargo::rubin-summit",
+          "id": "ca3988a8-0281-4a91-b15d-826d5c5fda24.2704682.5"
+        },
+        "object": {
+          "key": "LSSTCam/20250423/MC_O_20250423_000034/MC_O_20250423_000034_R31_S10.json",
+          "size": 2867,
+          "eTag": "c2484080b0150e9e7f943760c0171add",
+          "versionId": "",
+          "sequencer": "5A3D096863AA680C",
+          "metadata": [],
+          "tags": []
+        }
+      },
+      "eventId": "1745435994.208185.c2484080b0150e9e7f943760c0171add",
+      "opaqueData": ""
+    }
+  ]
+}
