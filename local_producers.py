@@ -21,7 +21,7 @@ async def produce_file_notifications():
             msg = json.dumps(asdict(payload)).encode("utf-8")
             await producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
             counter += 1
-            await asyncio.sleep(random.uniform(1, 4))
+            await asyncio.sleep(random.uniform(1, 20))
     finally:
         await producer.stop()
 

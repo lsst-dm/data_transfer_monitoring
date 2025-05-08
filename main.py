@@ -12,6 +12,16 @@ from local_producers import produce_file_notifications, produce_end_readouts
 
 # topics are file notifications and end readout
 
+# counter for .fits file
+# counter for .json file
+# counter for end run kafka message
+# if files are missing then generate a log message
+# coutner for missing files over time
+#
+# add histogram summary over sliding time window
+# add summary of files processed during the window: prometheus Summary
+# all metrics are valid over the observation window, files come in every 30 seconds
+
 
 async def main():
     tasks = []
