@@ -6,7 +6,7 @@ from models.end_readout import EndReadoutModel
 fake = Faker()
 
 
-def fake_end_readout() -> EndReadoutModel:
+def fake_end_readout(img_obj) -> EndReadoutModel:
     return EndReadoutModel(
         private_sndStamp=fake.unix_time(),
         private_rcvStamp=0.0,
@@ -21,14 +21,9 @@ def fake_end_readout() -> EndReadoutModel:
             fake.iso8601(), fake.word().upper(), fake.word().upper()
         ),
         imagesInSequence=1,
-        imageName=fake.bothify(text="MC_O_########_######"),
-        imageIndex=1,
-        imageSource=fake.random_element(elements=("MC", "SC", "EC")),
-        imageController=fake.random_letter().upper(),
-        imageDate=fake.date(pattern="%Y%m%d"),
-        imageNumber=random.randint(1, 100),
         timestampAcquisitionStart=fake.unix_time(),
         requestedExposureTime=0.0,
-        timestampEndOfReadout=fake.unix_time()
+        timestampEndOfReadout=fake.unix_time(),
+        **img_obj
     )
 

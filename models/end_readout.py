@@ -1,7 +1,10 @@
+import os
 from dataclasses import dataclass
 from typing import Any, Dict
+from dataclasses_json import dataclass_json
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class EndReadoutModel:
     private_sndStamp: float
@@ -26,7 +29,7 @@ class EndReadoutModel:
     timestampEndOfReadout: float
 
     @classmethod
-    def from_raw(cls, raw: Dict[str, Any]) -> "EndReadoutModel":
+    def from_json(cls, raw: Dict[str, Any]) -> "EndReadoutModel":
         return cls(**raw)
 
     @property
@@ -35,3 +38,7 @@ class EndReadoutModel:
         keys = self.additionalKeys.split(":")
         values = self.additionalValues.split(":")
         return dict(zip(keys, values))
+
+    @property
+    def expected_sensors_folder_prefix(self):
+        return os.path.join("LSSTCam", self.imageDate, self.imageName)

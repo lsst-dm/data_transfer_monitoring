@@ -18,120 +18,111 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List
+from pathlib import Path
+from dataclasses_json import dataclass_json, config
+from marshmallow import fields
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class OwnerIdentity:
-    principal_id: str
+    principal_id: str = field(metadata=config(field_name="principal-id"))
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class S3Bucket:
     name: str
-    owner_identity: OwnerIdentity
+    owner_identity: OwnerIdentity = field(metadata=config(field_name="owner-identity"))
     arn: str
     id: str
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class S3Object:
     key: str
     size: int
-    e_tag: str
-    version_id: str
+    e_tag: str = field(metadata=config(field_name="eTag"))
+    version_id: str = field(metadata=config(field_name="versionId"))
     sequencer: str
     metadata: List[Dict[str, Any]] = None
     tags: List[Dict[str, Any]] = None
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class S3Info:
-    s3_schema_version: str
-    configuration_id: str
+    s3_schema_version: str = field(metadata=config(field_name="s3SchemaVersion"))
+    configuration_id: str = field(metadata=config(field_name="configurationId"))
     bucket: S3Bucket
     object: S3Object
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class UserIdentity:
-    principal_id: str
+    principal_id: str = field(metadata=config(field_name="principalId"))
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class RequestParameters:
-    source_ip_address: str
+    source_ip_address: str = field(metadata=config(field_name="sourceIpAddress"))
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class ResponseElements:
-    x_amz_request_id: str
-    x_amz_id_2: str
+    x_amz_request_id: str = field(metadata=config(field_name="x-amz-request-id"))
+    x_amz_id_2: str = field(metadata=config(field_name="x-amz-id-2"))
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class Record:
-    event_version: str
-    event_source: str
-    aws_region: str
-    event_time: datetime
-    event_name: str
-    user_identity: UserIdentity
-    request_parameters: RequestParameters
-    response_elements: ResponseElements
+    event_version: str = field(metadata=config(field_name="eventVersion"))
+    event_source: str = field(metadata=config(field_name="eventSource"))
+    aws_region: str = field(metadata=config(field_name="awsRegion"))
+    event_time: str = field(
+        metadata=config(
+            field_name="eventTime",
+        )
+    )
+    event_name: str = field(metadata=config(field_name="eventName"))
+    user_identity: UserIdentity = field(metadata=config(field_name="userIdentity"))
+    request_parameters: RequestParameters = field(
+        metadata=config(field_name="requestParameters")
+    )
+    response_elements: ResponseElements = field(
+        metadata=config(field_name="responseElements")
+    )
     s3: S3Info
-    event_id: str
-    opaque_data: str
+    event_id: str = field(metadata=config(field_name="eventId"))
+    opaque_data: str = field(metadata=config(field_name="opaqueData"))
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class FileNotificationModel:
     records: List[Record]
+    JSON = "json"
+    FITS = "fits"
 
-    @classmethod
-    def from_json(cls, json_data: Dict[str, Any]) -> "FileNotificationModel":
-        def parse_record(record: Dict[str, Any]) -> Record:
-            return Record(
-                event_version=record["eventVersion"],
-                event_source=record["eventSource"],
-                aws_region=record["awsRegion"],
-                event_time=datetime.fromisoformat(record["eventTime"]),
-                event_name=record["eventName"],
-                user_identity=UserIdentity(
-                    principal_id=record["userIdentity"]["principalId"]
-                ),
-                request_parameters=RequestParameters(
-                    source_ip_address=record["requestParameters"]["sourceIPAddress"]
-                ),
-                response_elements=ResponseElements(
-                    x_amz_request_id=record["responseElements"]["x-amz-request-id"],
-                    x_amz_id_2=record["responseElements"]["x-amz-id-2"]
-                ),
-                s3=S3Info(
-                    s3_schema_version=record["s3"]["s3SchemaVersion"],
-                    configuration_id=record["s3"]["configurationId"],
-                    bucket=S3Bucket(
-                        name=record["s3"]["bucket"]["name"],
-                        owner_identity=OwnerIdentity(
-                            principal_id=record["s3"]["bucket"]["ownerIdentity"]["principalId"]
-                        ),
-                        arn=record["s3"]["bucket"]["arn"],
-                        id=record["s3"]["bucket"]["id"]
-                    ),
-                    object=S3Object(
-                        key=record["s3"]["object"]["key"],
-                        size=record["s3"]["object"]["size"],
-                        e_tag=record["s3"]["object"]["eTag"],
-                        version_id=record["s3"]["object"]["versionId"],
-                        sequencer=record["s3"]["object"]["sequencer"],
-                        metadata=record["s3"]["object"].get("metadata", []),
-                        tags=record["s3"]["object"].get("tags", [])
-                    )
-                ),
-                event_id=record["eventId"],
-                opaque_data=record["opaqueData"]
-            )
+    @property
+    def file_type(self):
+        if self.filepath.suffix == ".json":
+            return self.JSON
 
-        return cls(records=[parse_record(r) for r in json_data["Records"]])
+        return self.FITS
+
+    @property
+    def filepath(self):
+        return Path(self.records[0].s3.object.key)
+
+    @property
+    def observation_id(self):
+        return self.filepath.split("/")[2]

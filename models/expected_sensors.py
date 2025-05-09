@@ -19,12 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import os
 from dataclasses import dataclass
 from typing import Dict
 from typing import Any
-import json
+from dataclasses_json import dataclass_json
 
 
+@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class ExpectedSensorsModel:
     """Expected Sensors Message"""
@@ -34,24 +36,14 @@ class ExpectedSensorsModel:
     version: float
     expected_sensors: Dict[str, str]
 
-    def __init__(
-                 self,
-                 *args,
-                 topic="",
-                 bootstrap_servers="",
-                 group_id="",
-                 **kwargs
-             ):
-        super().__int__(*args, **kwargs, topic, bootstrap_servers, group_id)
-
     @classmethod
-    def from_raw_message(cls, message: dict[str, Any]):
-        """Factory creating an ExpectedSensorsModel from an unpacked message.
+    def from_json(cls, obj: dict[str, Any]):
+        """Factory creating an ExpectedSensorsModel from json.
 
         Parameters
         ----------
-        message : `dict` [`str`]
-            A mapping containing message fields.
+        obj: `dict` [`str`]
+            A mapping containing fields.
 
         Returns
         -------
@@ -59,9 +51,15 @@ class ExpectedSensorsModel:
             An object containing the fields in the message.
         """
         return ExpectedSensorsModel(
-            file_name=message["fileName"],
-            file_type=message["fileType"],
-            obs_id=message["obsId"],
-            version=message["version"],
-            expected_sensors=json.parse(message["expectedSensors"])
+            file_name=obj["fileName"],
+            file_type=obj["fileType"],
+            obs_id=obj["obsId"],
+            version=obj["version"],
+            expected_sensors=obj["expectedSensors"]
         )
+
+    @property
+    def storage_key(self):
+        img_source, img_controller, img_date, img_num, _ = self.file_name.split("_")
+        folder = "_".join([img_source, img_controller, img_date, img_num])
+        return os.path.join("LSSTCam", img_date, folder, self.file_name)

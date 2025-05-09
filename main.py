@@ -5,7 +5,8 @@ from shared import config
 from shared import constants
 from listeners.file_notifications import FileNotificationListener
 from listeners.end_readout import EndReadoutListener
-from local_producers import produce_file_notifications, produce_end_readouts
+from local_producers import produce_fake_data
+# from local_producers import produce_file_notifications, produce_end_readouts
 
 # file notification with expected sensors name in it
 # expected sensors lives in s3 bucket
@@ -21,18 +22,21 @@ from local_producers import produce_file_notifications, produce_end_readouts
 # add histogram summary over sliding time window
 # add summary of files processed during the window: prometheus Summary
 # all metrics are valid over the observation window, files come in every 30 seconds
+#
+# log error if a file comes in late or is missing
+# TODO image source is MC, if its not MC then log it and pass on the end readout event
+#
+#
+#
+# TODO not sure we need persistence, we could just query aws for the actual images.
+# this would work even for failover
 
 
 async def main():
     tasks = []
     if config.IS_PROD == "False":
         # start local producers if we're on local
-        tasks.extend(
-            [
-                produce_file_notifications(),
-                produce_end_readouts()
-            ]
-        )
+        tasks.append(produce_fake_data())
     # start prometheus
     start_http_server(8000)
 

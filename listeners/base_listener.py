@@ -1,11 +1,14 @@
 import ssl
 from abc import ABC
 from abc import abstractmethod
+import json
+
 from aiokafka import AIOKafkaConsumer
 
 from shared import constants
 from shared import config
 from shared.persistent_state_manager import PersistentStateClient
+from shared.aws_client import AsyncS3Client
 
 
 class BaseKafkaListener(ABC):
@@ -15,6 +18,7 @@ class BaseKafkaListener(ABC):
         self.group_id = group_id
         self.consumer = None
         self.state_manager = PersistentStateClient()
+        self.storage_client = AsyncS3Client(region_name="us-west-2")
 
         self.ssl_context = ssl.create_default_context()
         self.ssl_context.check_hostname = False  # TODO set to true when migrated to prompt-kafka
@@ -37,12 +41,15 @@ class BaseKafkaListener(ABC):
         await self.consumer.start()
         try:
             async for msg in self.consumer:
-                await self.handle_message(msg)
+                json_string = msg.value.decode("utf-8")
+                json_message = json.loads(json_string)
+                await self.handle_message(json_string)
         finally:
             await self.consumer.stop()
 
     async def initialize(self):
         await self.state_manager.initialize()
+        await self.storage_client.initialize()
 
     @abstractmethod
     async def handle_message(self, msg):
