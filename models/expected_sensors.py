@@ -20,43 +20,20 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict
-from typing import Any
-from dataclasses_json import dataclass_json
+from dataclasses_json import dataclass_json, config
 
 
 @dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class ExpectedSensorsModel:
     """Expected Sensors Message"""
-    file_name: str
-    file_type: str
-    obs_id: str
+    file_name: str = field(metadata=config(field_name="fileName"))
+    file_type: str = field(metadata=config(field_name="fileType"))
+    obs_id: str = field(metadata=config(field_name="obsId"))
     version: float
-    expected_sensors: Dict[str, str]
-
-    @classmethod
-    def from_json(cls, obj: dict[str, Any]):
-        """Factory creating an ExpectedSensorsModel from json.
-
-        Parameters
-        ----------
-        obj: `dict` [`str`]
-            A mapping containing fields.
-
-        Returns
-        -------
-        model : `ExpectedSensorsModel`
-            An object containing the fields in the message.
-        """
-        return ExpectedSensorsModel(
-            file_name=obj["fileName"],
-            file_type=obj["fileType"],
-            obs_id=obj["obsId"],
-            version=obj["version"],
-            expected_sensors=obj["expectedSensors"]
-        )
+    expected_sensors: Dict[str, str] = field(metadata=config(field_name="expectedSensors"))
 
     @property
     def storage_key(self):

@@ -6,7 +6,6 @@ from shared import constants
 from listeners.file_notifications import FileNotificationListener
 from listeners.end_readout import EndReadoutListener
 from local_producers import produce_fake_data
-# from local_producers import produce_file_notifications, produce_end_readouts
 
 # file notification with expected sensors name in it
 # expected sensors lives in s3 bucket

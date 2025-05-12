@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 
 from prometheus_client import Histogram
 from prometheus_client import Counter
@@ -64,6 +65,5 @@ class FileNotificationListener(BaseKafkaListener):
         if self.should_skip(msg):
             return
         self.record_metrics(msg)
-        print("recieved file notification message")
-        # print(f"File Notification: {msg.value.decode()}")
+        logging.info("recieved file notification message")
 

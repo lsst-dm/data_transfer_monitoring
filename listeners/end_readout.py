@@ -1,3 +1,5 @@
+import logging
+
 from prometheus_client import Counter
 
 from listeners.base_listener import BaseKafkaListener
@@ -6,6 +8,14 @@ from models.end_readout import EndReadoutModel
 
 class EndReadoutListener(BaseKafkaListener):
     """Class for handling EndReadout event"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.total_missing_files = Counter(
+            "files_missing_total",
+            "Total number of missing files"
+        )
 
     async def get_ufos(self, path_prefix: str):
         expected_sensors = (
@@ -20,8 +30,6 @@ class EndReadoutListener(BaseKafkaListener):
 
         # parse expected sensors file and make sure all of the files are in the folder
         # if any are missing, then increment counter
-        print(
-            "got end readout message. has expected sensors file: "
-        )
+        logging.info("got end readout message")
         unexplained_file_omissions = await self.get_ufos(msg.expected_sensors_folder_prefix)
-        print(f"End Readout UFO's: {unexplained_file_omissions}")
+        logging.info(f"End Readout UFO's: {unexplained_file_omissions}")
