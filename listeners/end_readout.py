@@ -19,6 +19,7 @@ class EndReadoutListener(BaseKafkaListener):
         # construct filepaths for each sensor and see if it exists
 
         return expected_sensors
+        return
 
     async def handle_message(self, message):
         msg = EndReadoutModel.from_json(message)
