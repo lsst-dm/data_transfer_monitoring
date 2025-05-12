@@ -58,7 +58,7 @@ KAFKA_BOOTSTRAP_SERVERS = "localhost:29092"
 #         await storage_client.upload_file(expected_sensors.storage_key, json_body=expected_sensors.to_json())
 
 async def produce_fake_data():
-    storage_client = AsyncS3Client("")
+    storage_client = AsyncS3Client()
     await storage_client.initialize()
     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
