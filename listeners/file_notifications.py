@@ -1,5 +1,4 @@
 from datetime import datetime
-from pathlib import Path
 
 from prometheus_client import Histogram
 from prometheus_client import Counter

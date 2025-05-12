@@ -58,7 +58,7 @@ KAFKA_BOOTSTRAP_SERVERS = "localhost:29092"
 #         await storage_client.upload_file(expected_sensors.storage_key, json_body=expected_sensors.to_json())
 
 async def produce_fake_data():
-    storage_client = AsyncS3Client()
+    storage_client = AsyncS3Client("")
     await storage_client.initialize()
     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
@@ -77,6 +77,7 @@ async def produce_fake_data():
                 files_to_send = [f for f in all_files if f not in late_files]
 
             # Upload and send notifications for files (excluding late ones)
+            print("uploading files")
             for file_obj in files_to_send:
                 key = file_obj.records[0].s3.object.key
                 await storage_client.upload_file(key)
@@ -101,7 +102,7 @@ async def produce_fake_data():
                 await producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
                 print(f"Late file notification sent for: {key}")
 
-            await asyncio.sleep(random.randint(25,45))  # Adjust as needed
+            await asyncio.sleep(random.randint(5, 7))  # Adjust as needed
 
     finally:
         await producer.stop()

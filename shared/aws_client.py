@@ -13,7 +13,7 @@ from shared import config
 class AsyncS3Client:
     """Class for interacting with AWS S3 storage"""
 
-    def __init__(self, region_name: str = None):
+    def __init__(self, region_name: str = "us-west-2"):
         self.region_name = region_name
         self.endpoint = self.get_endpoint()
         self.session = aioboto3.Session(
@@ -26,6 +26,7 @@ class AsyncS3Client:
             "s3", endpoint_url=self.endpoint, region_name=self.region_name
         ) as s3:
             try:
+                print("constants: ", constants)
                 await s3.head_bucket(Bucket=constants.STORAGE_BUCKET_NAME)
                 print(f"Bucket '{constants.STORAGE_BUCKET_NAME}' exists.")
             except botocore.exceptions.ClientError as e:

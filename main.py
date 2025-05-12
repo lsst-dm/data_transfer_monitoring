@@ -31,6 +31,15 @@ from local_producers import produce_fake_data
 # TODO not sure we need persistence, we could just query aws for the actual images.
 # this would work even for failover
 
+# images get generated every 7 seconds
+# end readout is in tai time
+
+# timestamp end of readout compare to when files arrive to make sure they arrive within the window (7 seconds)
+# file notifications should be sent out within 7 seconds of the timestampEndOfReadout time (tai time) 
+# file notification times are UTC
+
+# unexplained file omission (UFO)
+
 
 async def main():
     tasks = []
