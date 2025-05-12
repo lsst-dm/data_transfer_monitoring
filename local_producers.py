@@ -1,8 +1,8 @@
 import asyncio
 import random
-import json
-from dataclasses import asdict
 from aiokafka import AIOKafkaProducer
+import aioboto3
+import botocore
 
 from tests.fake_data.create_fake_data import create_fake_data
 
@@ -12,54 +12,40 @@ from shared.aws_client import AsyncS3Client
 KAFKA_BOOTSTRAP_SERVERS = "localhost:29092"
 
 
-# async def produce_file_notifications():
-#     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
-#     await producer.start()
-#     try:
-#         counter = 1
-#         while True:
-#             payload = fake_file_notification()
-#             msg = json.dumps(asdict(payload)).encode("utf-8")
-#             await producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
-#             counter += 1
-#             await asyncio.sleep(random.uniform(1, 20))
-#     finally:
-#         await producer.stop()
+async def ensure_bucket_exists(session):
+    async with session.client(
+        "s3", endpoint_url="http://localhost:4566", region_name="us-west-2"
+    ) as s3:
+        try:
+            await s3.head_bucket(Bucket=constants.STORAGE_BUCKET_NAME)
+            print(f"Bucket '{constants.STORAGE_BUCKET_NAME}' exists.")
+        except botocore.exceptions.ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if int(error_code) == 404:
+                print(
+                    f"Bucket '{constants.STORAGE_BUCKET_NAME}' does not exist. Creating it..."
+                )
+                await s3.create_bucket(
+                    Bucket=constants.STORAGE_BUCKET_NAME,
+                    CreateBucketConfiguration={
+                        "LocationConstraint": "us-west-2"
+                    },
+                )
+            if error_code == "BucketAlreadyOwnedByYou":
+                print(
+                    f"Bucket '{constants.STORAGE_BUCKET_NAME}' already exists and is owned by you. Proceeding."
+                )
+            else:
+                raise  # re-raise if it's a different error
 
-
-# async def produce_end_readouts():
-#     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
-#     await producer.start()
-#     try:
-#         counter = 1
-#         while True:
-#             payload = fake_end_readout()
-#             msg = json.dumps(asdict(payload)).encode("utf-8")
-#             await producer.send_and_wait(constants.END_READOUT_TOPIC_NAME, msg)
-#             counter += 1
-#             await asyncio.sleep(random.uniform(2, 6))
-#     finally:
-#         await producer.stop()
-
-
-# async def produce_fake_data():
-#     storage_client = AsyncS3Client()
-#     await storage_client.initialize()
-#     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
-#     await producer.start
-
-#     while True:
-#         expected_sensors, all_files, end_readout = create_fake_data()
-#         for file_obj in all_files:
-#             # might need to check that the date doesnt already exist in the storage bucket when generating
-#             key = file_obj.records[0].s3.object.key
-#             await storage_client.upload_file(key)
-
-#         await storage_client.upload_file(expected_sensors.storage_key, json_body=expected_sensors.to_json())
 
 async def produce_fake_data():
     storage_client = AsyncS3Client()
-    await storage_client.initialize()
+    session = aioboto3.Session(
+        aws_access_key_id=constants.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=constants.AWS_SECRET_ACCESS_KEY,
+    )
+    await ensure_bucket_exists(session)
     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
 
@@ -106,7 +92,6 @@ async def produce_fake_data():
 
     finally:
         await producer.stop()
-
 
 
 if __name__ == "__main__":

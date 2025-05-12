@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Dict
 from dataclasses_json import dataclass_json
 
 
@@ -27,10 +27,6 @@ class EndReadoutModel:
     timestampAcquisitionStart: float
     requestedExposureTime: float
     timestampEndOfReadout: float
-
-    @classmethod
-    def from_json(cls, raw: Dict[str, Any]) -> "EndReadoutModel":
-        return cls(**raw)
 
     @property
     def additional_fields(self) -> Dict[str, str]:

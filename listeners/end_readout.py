@@ -8,12 +8,17 @@ class EndReadoutListener(BaseKafkaListener):
     """Class for handling EndReadout event"""
 
     async def get_ufos(self, path_prefix: str):
-        expected_sensors = (
+        expected_sensors_data = (
             await self.storage_client.download_and_parse_expected_sensors_file(
                 prefix=path_prefix
             )
         )
-        return
+        print("expected sensors: ", expected_sensors_data)
+        expected_sensors = expected_sensors_data.expected_sensors
+
+        # construct filepaths for each sensor and see if it exists
+
+        return expected_sensors
 
     async def handle_message(self, message):
         msg = EndReadoutModel.from_json(message)

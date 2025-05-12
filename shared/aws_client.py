@@ -1,6 +1,6 @@
 import json
-import botocore
 import aioboto3
+from botocore.exceptions import ClientError
 from typing import List
 from typing import Optional
 from typing import Dict
@@ -8,6 +8,7 @@ from typing import Any
 
 from shared import constants
 from shared import config
+from models.expected_sensors import ExpectedSensorsModel
 
 
 class AsyncS3Client:
@@ -20,32 +21,6 @@ class AsyncS3Client:
             aws_access_key_id=constants.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=constants.AWS_SECRET_ACCESS_KEY,
         )
-
-    async def initialize(self):
-        async with self.session.client(
-            "s3", endpoint_url=self.endpoint, region_name=self.region_name
-        ) as s3:
-            try:
-                await s3.head_bucket(Bucket=constants.STORAGE_BUCKET_NAME)
-                print(f"Bucket '{constants.STORAGE_BUCKET_NAME}' exists.")
-            except botocore.exceptions.ClientError as e:
-                error_code = e.response["Error"]["Code"]
-                if int(error_code) == 404:
-                    print(
-                        f"Bucket '{constants.STORAGE_BUCKET_NAME}' does not exist. Creating it..."
-                    )
-                    await s3.create_bucket(
-                        Bucket=constants.STORAGE_BUCKET_NAME,
-                        CreateBucketConfiguration={
-                            "LocationConstraint": self.region_name
-                        },
-                    )
-                if error_code == "BucketAlreadyOwnedByYou":
-                    print(
-                        f"Bucket '{constants.STORAGE_BUCKET_NAME}' already exists and is owned by you. Proceeding."
-                    )
-                else:
-                    raise  # re-raise if it's a different error
 
     def get_endpoint(self):
         if config.IS_PROD == "True":
@@ -68,6 +43,28 @@ class AsyncS3Client:
                 for obj in page.get("Contents", []):
                     keys.append(obj["Key"])
         return keys
+
+    async def file_exists(
+        self,
+        key: str,
+        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+        prefix: Optional[str] = ""
+    ) -> bool:
+        """
+        Asynchronously checks if a file with the given key exists in the specified S3 bucket.
+        Returns True if exists, False otherwise.
+        """
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint, region_name=self.region_name
+        ) as s3_client:
+            try:
+                await s3_client.head_object(Bucket=bucket_name, Key=key)
+                return True
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "404":
+                    return False
+                else:
+                    raise
 
     async def contains_expected_sensors_file(
         self,
@@ -107,7 +104,7 @@ class AsyncS3Client:
         ) as s3_client:
             response = await s3_client.get_object(Bucket=bucket_name, Key=target_file)
             content = await response["Body"].read()
-            return json.loads(content.decode("utf-8"))
+            return ExpectedSensorsModel.from_json(json.loads(content.decode("utf-8")))
 
     async def upload_file(
         self, key, json_body=None, bucket_name=constants.STORAGE_BUCKET_NAME
