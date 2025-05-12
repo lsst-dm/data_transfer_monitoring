@@ -26,7 +26,6 @@ class AsyncS3Client:
             "s3", endpoint_url=self.endpoint, region_name=self.region_name
         ) as s3:
             try:
-                print("constants: ", constants)
                 await s3.head_bucket(Bucket=constants.STORAGE_BUCKET_NAME)
                 print(f"Bucket '{constants.STORAGE_BUCKET_NAME}' exists.")
             except botocore.exceptions.ClientError as e:
