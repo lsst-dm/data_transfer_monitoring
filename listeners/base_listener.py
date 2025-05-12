@@ -17,7 +17,6 @@ class BaseKafkaListener(ABC):
         self.use_auth = use_auth
         self.consumer = None
         self.storage_client = AsyncS3Client()
-        self.storage_client = AsyncS3Client(region_name="us-west-2")
 
         self.ssl_context = ssl.create_default_context()
         self.ssl_context.check_hostname = False  # TODO set to true when migrated to prompt-kafka
@@ -53,9 +52,6 @@ class BaseKafkaListener(ABC):
                 await self.handle_message(json_string)
         finally:
             await self.consumer.stop()
-
-    async def initialize(self):
-        await self.storage_client.initialize()
 
     @abstractmethod
     async def handle_message(self, msg):
