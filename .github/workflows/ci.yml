@@ -10,7 +10,7 @@ name: CI
       - "dependabot/**"
       - "renovate/**"
       - "tickets/**"
-      - "u/**"
+      # - "u/**"
     tags:
       - "*"
   pull_request: {}
