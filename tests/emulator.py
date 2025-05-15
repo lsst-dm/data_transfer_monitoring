@@ -3,6 +3,7 @@ import asyncio
 import random
 from aiokafka import AIOKafkaProducer
 import botocore
+import json
 
 from tests.fake_data.create_fake_data import create_fake_data
 
@@ -27,6 +28,27 @@ class Emulator(object):
 
         self.storage = AsyncS3Client()
         self.producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
+
+    async def upload_file(
+        self, key, json_body=None, bucket_name=constants.STORAGE_BUCKET_NAME
+    ):
+        """
+        Uploads an empty file or a JSON body to the specified S3 key.
+        If json_body is provided, uploads it as JSON; otherwise, uploads an empty file.
+        """
+        body = b""
+        content_type = "application/octet-stream"
+        if json_body is not None:
+            body = json.dumps(json_body).encode("utf-8")
+            content_type = "application/json"
+            logging.info("uploading expected sensors file: ", key)
+
+        async with self.storage.session.client(
+            "s3", endpoint_url=self.storage.endpoint
+        ) as s3:
+            await s3.put_object(
+                Bucket=bucket_name, Key=key, Body=body, ContentType=content_type
+            )
 
     async def ensure_bucket_exists(self):
         async with self.storage.session.client(
@@ -80,7 +102,7 @@ class Emulator(object):
         """
         async def upload(file_obj):
             key = file_obj.records[0].s3.object.key
-            await self.storage.upload_file(key)
+            await self.upload_file(key)
             return file_obj, key
 
         upload_results = await asyncio.gather(*(upload(f) for f in files))
@@ -105,7 +127,7 @@ class Emulator(object):
         logging.info("uploading files")
         for file_obj in files:
             key = file_obj.records[0].s3.object.key
-            await self.storage.upload_file(key)
+            await self.upload_file(key)
             msg = file_obj.to_json().encode("utf-8")
             await self.producer.send_and_wait(
                 constants.FILE_NOTIFICATION_TOPIC_NAME, msg
@@ -123,7 +145,7 @@ class Emulator(object):
                 await self.upload_files_and_confirm(files_to_send)
 
                 # Upload expected sensors file
-                await self.storage.upload_file(
+                await self.upload_file(
                     expected_sensors.storage_key, json_body=expected_sensors.to_json()
                 )
 
