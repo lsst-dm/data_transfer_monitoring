@@ -1,6 +1,7 @@
 import logging
 import json
 import aioboto3
+from botocore.exceptions import ClientError
 from typing import List
 from typing import Optional
 from typing import Dict
@@ -8,6 +9,7 @@ from typing import Any
 
 from shared import constants
 from shared import config
+from models.expected_sensors import ExpectedSensorsModel
 
 
 class AsyncS3Client:
@@ -41,6 +43,22 @@ class AsyncS3Client:
                 for obj in page.get("Contents", []):
                     keys.append(obj["Key"])
         return keys
+
+    async def check_if_key_exists(
+        self,
+        key: str,
+        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+    ):
+        async with self.session.client("s3", endpoint_url=self.endpoint) as s3_client:
+            try:
+                await s3_client.head_object(Bucket=bucket_name, Key=key)
+                return True
+            except ClientError as e:
+                error_code = e.response['Error']['Code']
+                if error_code in ('404', 'NoSuchKey'):
+                    return False
+                else:
+                    raise  # Re-raise if it's a different error
 
     async def contains_expected_sensors_file(
         self,
@@ -80,29 +98,8 @@ class AsyncS3Client:
         ) as s3_client:
             response = await s3_client.get_object(Bucket=bucket_name, Key=target_file)
             content = await response["Body"].read()
-            return json.loads(content.decode("utf-8"))
-
-    async def upload_file(
-        self, key, json_body=None, bucket_name=constants.STORAGE_BUCKET_NAME
-    ):
-        """
-        Uploads an empty file or a JSON body to the specified S3 key.
-        If json_body is provided, uploads it as JSON; otherwise, uploads an empty file.
-        """
-        body = b""
-        content_type = "application/octet-stream"
-        if json_body is not None:
-            body = json.dumps(json_body).encode("utf-8")
-            content_type = "application/json"
-            logging.info("uploading expected sensors file: ", key)
-
-        async with self.session.client(
-            "s3", endpoint_url=self.endpoint
-        ) as s3:
-            await s3.put_object(
-                Bucket=bucket_name, Key=key, Body=body, ContentType=content_type
-            )
-
+            sensors_json = json.loads(content.decode("utf-8"))
+            return ExpectedSensorsModel.from_json(sensors_json)
 
 # Example usage:
 # import asyncio
