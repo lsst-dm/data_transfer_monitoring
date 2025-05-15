@@ -85,9 +85,6 @@ class Emulator(object):
         )
         rand_num = random.random()
         should_send_late_files = rand_num < chance_of_late_files
-        print("should send late files: ", should_send_late_files)
-        print("chance of late files: ", chance_of_late_files)
-        print("random number: ", rand_num)
         if should_send_late_files and len(files) > 0:
             num_late = random.randint(0, len(files))
             late_files = random.sample(files, k=num_late)
