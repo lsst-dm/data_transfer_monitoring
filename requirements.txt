@@ -29,6 +29,8 @@ botocore==1.37.3
     #   aiobotocore
     #   boto3
     #   s3transfer
+cachetools==5.5.2
+    # via data-transfer-monitoring (pyproject.toml)
 dataclasses-json==0.6.7
     # via data-transfer-monitoring (pyproject.toml)
 faker==37.1.0
