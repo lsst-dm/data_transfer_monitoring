@@ -6,6 +6,7 @@ from shared import constants
 from shared import config
 from listeners.file_notifications import FileNotificationListener
 from listeners.end_readout import EndReadoutListener
+from shared.notifications.notification_tracker import NotificationTracker
 
 # file notification with expected sensors name in it
 # expected sensors lives in s3 bucket
@@ -53,6 +54,10 @@ async def main():
     if config.SHOULD_RUN_END_READOUT_LISTENER:
         logging.info("starting end readout listener")
         tasks.append(EndReadoutListener(constants.END_READOUT_TOPIC_NAME).start())
+
+    await NotificationTracker.start_periodic_cleanup(
+        interval_seconds=constants.NOTIFICATION_CLEANUP_INTERVAL
+    )
 
     await asyncio.gather(*tasks)
 
