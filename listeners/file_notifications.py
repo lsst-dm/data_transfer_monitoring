@@ -6,6 +6,7 @@ from prometheus_client import Counter
 
 from listeners.base_listener import BaseKafkaListener
 from models.file_notification import FileNotificationModel
+from shared.notifications.notification_tracker import NotificationTracker
 
 
 class FileNotificationListener(BaseKafkaListener):
@@ -13,23 +14,23 @@ class FileNotificationListener(BaseKafkaListener):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.notification_tracker = NotificationTracker()
         self.time_of_last_message = self.get_initial_time_of_last_message()
         self.total_messages_recieved = Counter(
-            "file_messages_recieved_total",
-            "Total number of file messages recieved"
+            "file_messages_recieved_total", "Total number of file messages recieved"
         )
         self.fits_files_recieved = Counter(
             "file_messages_recieved_fits_total",
-            "Total number of .fits file messages recieved"
+            "Total number of .fits file messages recieved",
         )
         self.json_files_recieved = Counter(
             "file_messages_recieved_header_total",
-            "Total number of .json header file messages recieved"
+            "Total number of .json header file messages recieved",
         )
         self.file_message_histogram = Histogram(
             "file_messages_recieved_seconds",
             "Histogram of file message recieve intervals (Seconds)",
-            buckets=[1, 5, 10, 20, 30]
+            buckets=[1, 5, 10, 20, 30],
         )
 
     def should_skip(self, message: FileNotificationModel):
@@ -64,6 +65,8 @@ class FileNotificationListener(BaseKafkaListener):
         msg = FileNotificationModel.from_json(msg_obj)
         if self.should_skip(msg):
             return
+        await self.notification_tracker.add_file_notification(
+            msg.storage_key, msg, msg.file_type
+        )
         self.record_metrics(msg)
         logging.info("recieved file notification message")
-
