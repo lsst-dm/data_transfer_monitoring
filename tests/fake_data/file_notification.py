@@ -30,8 +30,8 @@ def fake_s3_bucket():
 
 
 def fake_s3_object(img_obj, sensor_name, file_extension):
-    image_date = img_obj["imageDate"]
-    observation_id = img_obj["imageName"]
+    image_date = img_obj["image_date"]
+    observation_id = img_obj["image_name"]
     filename = f"{observation_id}_{sensor_name}{file_extension}"
     # "key": "LSSTCam/20250423/MC_O_20250423_000034/MC_O_20250423_000034_R31_S10.json",
     return S3Object(
