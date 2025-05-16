@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from prometheus_client import Counter
@@ -6,6 +5,13 @@ from prometheus_client import Counter
 from listeners.base_listener import BaseKafkaListener
 from models.end_readout import EndReadoutModel
 from models.expected_sensors import ExpectedSensorsModel
+from shared.notifications.notification_tracker import NotificationTracker
+
+# file notification is proof that we have the file, is generated after file write
+# end readout hsould just check
+# TODO need to validate logic of 15 seconds file being late being "missing"
+# late files are already a problem
+# 3 data structures, 1 for file notifications, 1 for end readouts 1 for orphans
 
 
 class EndReadoutListener(BaseKafkaListener):
@@ -13,6 +19,7 @@ class EndReadoutListener(BaseKafkaListener):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.notification_tracker = NotificationTracker()
 
         self.total_missing_files = Counter(
             "total_missing_files", "Total number of missing files"
@@ -41,7 +48,7 @@ class EndReadoutListener(BaseKafkaListener):
         ]
         return expected_fits_files, expected_json_files
 
-    async def get_missing_files(self, path_prefix: str):
+    async def process_end_readout(self, path_prefix: str):
         sensors = await self.storage_client.download_and_parse_expected_sensors_file(
             prefix=path_prefix
         )
@@ -49,38 +56,35 @@ class EndReadoutListener(BaseKafkaListener):
             return [], []
         expected_fits_files, expected_json_files = self.get_expected_file_keys(sensors)
 
-        fits_checks = [
-            self.storage_client.check_if_key_exists(key) for key in expected_fits_files
-        ]
-        json_checks = [
-            self.storage_client.check_if_key_exists(key) for key in expected_json_files
-        ]
-
-        fits_results, json_results = await asyncio.gather(
-            asyncio.gather(*fits_checks), asyncio.gather(*json_checks)
+        status = await self.notification_tracker.handle_end_readout(
+            sensors.storage_key, expected_fits_files, expected_json_files
         )
 
-        missing_fits_files = [
-            key for key, exists in zip(expected_fits_files, fits_results) if not exists
-        ]
-        missing_json_files = [
-            key for key, exists in zip(expected_json_files, json_results) if not exists
-        ]
+        return status["missing_fits"], status["missing_json"]
 
-        return missing_fits_files, missing_json_files
+    def should_skip(self, msg):
+        should_skip = not msg.image_source == "MC"
+        if should_skip:
+            return True
+        return False
 
     async def handle_message(self, message):
         msg = EndReadoutModel.from_json(message)
+        if self.should_skip(msg):
+            return
+
+        resolved_end_readouts = await self.notification_tracker.resolve_pending_end_readouts()
+        logging.info("num resolved pending end readouts: ", resolved_end_readouts)
+
+        pending_end_readouts = await self.notification_tracker.get_pending_end_readouts()
+        logging.info("num pending end readouts: ", len(pending_end_readouts))
+
+        orphaned_end_readouts = await self.notification_tracker.get_orphans()
+        logging.info("num orphans: ", len(orphaned_end_readouts))
 
         # parse expected sensors file and make sure all of the files are in the folder
         # if any are missing, then increment counter
         logging.info("got end readout message")
-        missing_fits_files, missing_json_files = await self.get_missing_files(
+        await self.process_end_readout(
             msg.expected_sensors_folder_prefix
-        )
-        self.total_missing_files.inc(len(missing_fits_files) + len(missing_json_files))
-        self.total_missing_fits_files.inc(len(missing_fits_files))
-        self.total_missing_json_files.inc(len(missing_json_files))
-        logging.info(
-            f"End Readout missing files: {len(missing_fits_files) + len(missing_json_files)}"
         )
