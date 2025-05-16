@@ -93,6 +93,16 @@ class Emulator(object):
 
         return files_to_send, late_files
 
+    async def send_file_notifications(self, files):
+        """
+            Sends file notifications for the provided files
+        """
+        async def notify(file_obj):
+            msg = file_obj.to_json().encode("utf-8")
+            await self.producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
+
+        await asyncio.gather(*(notify(f) for f in files))
+
     async def upload_files_and_confirm(self, files):
         """
         Upload files in parallel, confirm existence in parallel, then send notifications in parallel.
@@ -114,11 +124,7 @@ class Emulator(object):
 
         confirmed_files = await asyncio.gather(*(confirm(f, k) for f, k in upload_results))
 
-        async def notify(file_obj):
-            msg = file_obj.to_json().encode("utf-8")
-            await self.producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
-
-        await asyncio.gather(*(notify(f) for f in confirmed_files))
+        await self.send_file_notifications(confirmed_files)
 
     async def upload_files_and_send_notifications(self, files):
         logging.info("uploading files")
@@ -131,6 +137,13 @@ class Emulator(object):
             )
 
     async def produce_fake_data(self):
+        async def send_late_files(late_files):
+            # Wait 7 seconds before sending late file notifications
+            await asyncio.sleep(random.randint(1,7))
+            for file_obj in late_files:
+                msg = file_obj.to_json().encode("utf-8")
+                await self.producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
+
         try:
             while True:
                 expected_sensors, all_files, end_readout = create_fake_data()
@@ -138,20 +151,30 @@ class Emulator(object):
                 # Decide if we will send some files late
                 files_to_send, late_files = self.split_late_files(all_files)
 
-                # Upload and send notifications for files (excluding late ones)
-                await self.upload_files_and_confirm(files_to_send)
-
                 # Upload expected sensors file
                 await self.upload_file(
                     expected_sensors.storage_key, json_body=expected_sensors.to_json()
                 )
 
-                # Send end readout event
-                msg = end_readout.to_json().encode("utf-8")
-                await self.producer.send_and_wait(constants.END_READOUT_TOPIC_NAME, msg)
+                # Prepare on-time file notifications and end readout
+                notifications = []
+                for file_obj in files_to_send:
+                    msg = file_obj.to_json().encode("utf-8")
+                    notifications.append(("file", msg))
+                end_readout_msg = end_readout.to_json().encode("utf-8")
+                notifications.append(("end_readout", end_readout_msg))
 
-                # Now send the late file notifications
-                await self.upload_files_and_send_notifications(late_files)
+                # Shuffle and send on-time notifications and end readout
+                random.shuffle(notifications)
+                for notif_type, msg in notifications:
+                    if notif_type == "file":
+                        await self.producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
+                    elif notif_type == "end_readout":
+                        await self.producer.send_and_wait(constants.END_READOUT_TOPIC_NAME, msg)
+
+                # Spawn a task to send late file notifications after 7 seconds
+                if late_files:
+                    asyncio.create_task(send_late_files(late_files))
 
                 await asyncio.sleep(
                     random.randint(self.min_wait_time, self.max_wait_time)
