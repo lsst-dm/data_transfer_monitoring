@@ -1,4 +1,3 @@
-import logging
 import json
 import aioboto3
 from botocore.exceptions import ClientError
@@ -69,7 +68,6 @@ class AsyncS3Client:
         Returns True if any file in the bucket (optionally with prefix)
         contains 'expectedSensors.json' in its filename.
         """
-        print("looking for prefix: ", prefix)
         files = await self.list_files(bucket_name, prefix)
         for file_key in files:
             if constants.EXPECTED_SENSORS_FILENAME in file_key:
@@ -100,11 +98,3 @@ class AsyncS3Client:
             content = await response["Body"].read()
             sensors_json = json.loads(content.decode("utf-8"))
             return ExpectedSensorsModel.from_json(sensors_json)
-
-# Example usage:
-# import asyncio
-# async def main():
-#     client = AsyncS3Client(region_name="us-west-2")
-#     files = await client.list_files("my-bucket", prefix="some/folder/")
-#     print(files)
-# asyncio.run(main())
