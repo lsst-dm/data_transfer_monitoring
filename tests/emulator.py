@@ -8,7 +8,7 @@ import json
 from tests.fake_data.create_fake_data import create_fake_data
 
 from shared import constants
-from shared.aws_client import AsyncS3Client
+from shared.s3_client import AsyncS3Client
 
 KAFKA_BOOTSTRAP_SERVERS = "localhost:29092"
 
@@ -16,15 +16,19 @@ KAFKA_BOOTSTRAP_SERVERS = "localhost:29092"
 class Emulator(object):
     def __init__(
         self,
-        min_chance_of_late_files: float = 0.025,
-        max_chance_of_late_files: float = 0.05,
+        min_chance_of_late_files: float = 0.01,
+        max_chance_of_late_files: float = 0.02,
         min_wait_time: int = 1,
-        max_wait_time: int = 7,
+        max_wait_time: int = 5,
+        min_late_time: int = 7,
+        max_late_time: int = 30,
     ):
         self.min_chance_of_late_files = min_chance_of_late_files
         self.max_chance_of_late_files = max_chance_of_late_files
         self.min_wait_time = min_wait_time
         self.max_wait_time = max_wait_time
+        self.min_late_time = min_late_time
+        self.max_late_time = max_late_time
 
         self.storage = AsyncS3Client()
         self.producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
@@ -138,8 +142,8 @@ class Emulator(object):
 
     async def produce_fake_data(self):
         async def send_late_files(late_files):
-            # Wait 7 seconds before sending late file notifications
-            await asyncio.sleep(random.randint(1,7))
+            # Wait up to 7 seconds before sending late file notifications
+            await asyncio.sleep(random.randint(self.min_late_time, self.max_late_time))
             for file_obj in late_files:
                 msg = file_obj.to_json().encode("utf-8")
                 await self.producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)

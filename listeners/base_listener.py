@@ -6,7 +6,7 @@ from aiokafka import AIOKafkaConsumer
 
 from shared import constants
 from shared import config
-from shared.aws_client import AsyncS3Client
+from shared.s3_client import AsyncS3Client
 
 
 class BaseKafkaListener(ABC):

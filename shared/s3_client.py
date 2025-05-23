@@ -10,6 +10,8 @@ from shared import constants
 from shared import config
 from models.expected_sensors import ExpectedSensorsModel
 
+# TODO change this to 
+
 
 class AsyncS3Client:
     """Class for interacting with AWS S3 storage"""
@@ -23,7 +25,7 @@ class AsyncS3Client:
 
     def get_endpoint(self):
         if config.IS_PROD == "True":
-            return ""
+            return constants.S3_ENDPOINT_URL
         else:
             return "http://localhost:4566"
 
