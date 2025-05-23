@@ -2,6 +2,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Dict
 from dataclasses_json import dataclass_json, config
+from astropy.time import Time
+import astropy.units as u
 
 
 @dataclass_json
@@ -41,3 +43,18 @@ class EndReadoutModel:
     @property
     def expected_sensors_folder_prefix(self):
         return os.path.join("LSSTCam", self.image_date, self.image_name)
+
+    @property
+    def timestamp(self):
+        """
+            Returns a python utc datetime
+        """
+        # Create a Time object at the TAI epoch
+        tai_epoch = Time('1958-01-01T00:00:00', scale='tai')
+
+        # Add the seconds to the epoch
+        t = tai_epoch + self.timestamp_end_of_readout * u.s
+
+        # Convert to UTC and extract Python datetime
+        dt_utc = t.utc.datetime
+        return dt_utc
