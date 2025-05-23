@@ -1,4 +1,5 @@
 from faker import Faker
+from datetime import datetime, timedelta
 import random
 
 from models.file_notification import (
@@ -65,13 +66,21 @@ def fake_request_parameters():
 def fake_response_elements():
     return ResponseElements(x_amz_request_id=fake.uuid4(), x_amz_id_2=fake.uuid4())
 
+def get_record_event_time():
+    now = datetime.now()
+    start_time = now - timedelta(seconds=7)
+    fake_datetime = fake.date_time_between(
+        start_date=start_time,
+        end_date=now
+    )
+    return fake_datetime
 
 def fake_record(img_obj, sensor_name, file_extension):
     return Record(
         event_version="2.2",
         event_source="ceph:s3",
         aws_region=fake.word(),
-        event_time=str(fake.date_time_this_year()),
+        event_time=str(get_record_event_time()),
         event_name="ObjectCreated:Put",
         user_identity=fake_user_identity(),
         request_parameters=fake_request_parameters(),
