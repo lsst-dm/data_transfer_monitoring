@@ -26,7 +26,7 @@ def generate_expected_sensors():
 
 
 def generate_expected_sensors_object(img_obj):
-    obs_id = img_obj["imageName"]
+    obs_id = img_obj["image_name"]
     file_name = f"{obs_id}_expectedSensors.json"
     return {
         "fileName": file_name,
@@ -38,7 +38,7 @@ def generate_expected_sensors_object(img_obj):
 
 
 def fake_expected_sensors(img_obj) -> ExpectedSensorsModel:
-    obs_id = img_obj["imageName"]
+    obs_id = img_obj["image_name"]
     file_name = f"{obs_id}_expectedSensors.json"
     return ExpectedSensorsModel(
         file_name=file_name,
