@@ -1,10 +1,25 @@
 from faker import Faker
+from datetime import datetime, timedelta
 import random
 
 from models.end_readout import EndReadoutModel
 
 fake = Faker()
 
+def fake_tai_time():
+    # Get current UTC time
+    now_utc = datetime.utcnow()
+    
+    # Calculate start time (7 seconds ago in UTC)
+    start_time_utc = now_utc - timedelta(seconds=8)
+    
+    # Generate random UTC time within last 5 seconds
+    random_seconds = random.uniform(0, 5)
+    fake_utc = start_time_utc + timedelta(seconds=random_seconds)
+    
+    # Convert to TAI by adding fixed offset (37 seconds as of 2025)
+    tai_offset = timedelta(seconds=37)
+    return fake_utc + tai_offset
 
 def fake_end_readout(img_obj) -> EndReadoutModel:
     return EndReadoutModel(
@@ -23,7 +38,7 @@ def fake_end_readout(img_obj) -> EndReadoutModel:
         images_in_sequence=1,
         timestamp_acquisition_start=fake.unix_time(),
         requested_exposure_time=0.0,
-        timestamp_end_of_readout=fake.unix_time(),
+        timestamp_end_of_readout=fake_tai_time(),
         **img_obj
     )
 
