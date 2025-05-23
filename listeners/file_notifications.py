@@ -16,21 +16,21 @@ class FileNotificationListener(BaseKafkaListener):
         super().__init__(*args, **kwargs)
         self.notification_tracker = NotificationTracker()
         self.time_of_last_message = self.get_initial_time_of_last_message()
-        self.total_messages_recieved = Counter(
-            "file_messages_recieved_total", "Total number of file messages recieved"
+        self.total_messages_received = Counter(
+            "file_messages_received_total", "Total number of file messages received"
         )
-        self.fits_files_recieved = Counter(
-            "file_messages_recieved_fits_total",
-            "Total number of .fits file messages recieved",
+        self.fits_files_received = Counter(
+            "file_messages_received_fits_total",
+            "Total number of .fits file messages received",
         )
-        self.json_files_recieved = Counter(
-            "file_messages_recieved_header_total",
-            "Total number of .json header file messages recieved",
+        self.json_files_received = Counter(
+            "file_messages_received_header_total",
+            "Total number of .json header file messages received",
         )
         self.file_message_histogram = Histogram(
-            "file_messages_recieved_seconds",
-            "Histogram of file message recieve intervals (Seconds)",
-            buckets=[1, 5, 10, 20, 30],
+            "file_messages_received_seconds",
+            "Histogram of file message receive intervals (Seconds)",
+            buckets=[1, 2, 4, 8, 16],
         )
 
     def should_skip(self, message: FileNotificationModel):
@@ -51,13 +51,13 @@ class FileNotificationListener(BaseKafkaListener):
         now = datetime.now()
 
         if msg.file_type == FileNotificationModel.JSON:
-            self.json_files_recieved.inc()
+            self.json_files_received.inc()
 
         if msg.file_type == FileNotificationModel.FITS:
-            self.fits_files_recieved.inc()
+            self.fits_files_received.inc()
 
         self.record_histogram(now)
-        self.total_messages_recieved.inc()
+        self.total_messages_received.inc()
 
         self.time_of_last_message = now
 
