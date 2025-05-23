@@ -26,7 +26,7 @@ class NotificationTracker:
     _cleanup_started = False
 
     @classmethod
-    async def start_periodic_cleanup(cls, interval_seconds=60):
+    async def start_periodic_cleanup(cls, interval_seconds=1):
         async with cls._cleanup_lock:
             if cls._cleanup_started:
                 return  # Already started
@@ -63,7 +63,7 @@ class NotificationTracker:
             await cls.orphans.set(jid, val)
         # Remove expired end_readouts
         end_items = await cls.pending_end_readouts.items()
-        expired = [erid for erid, (_, _, _, _, ts) in end_items if now - ts > cls.max_file_late_time]
+        expired = [erid for erid, (_, _, _, _, _, ts) in end_items if now - ts > cls.max_file_late_time]
         for erid in expired:
             val = await cls.pending_end_readouts.pop(erid)
             await cls.orphans.set(erid, val)
@@ -77,7 +77,7 @@ class NotificationTracker:
         else:
             raise ValueError(f"Unknown file type: {file_type}")
 
-    async def handle_end_readout(self, end_readout_id, expected_fits_ids, expected_json_ids):
+    async def handle_end_readout(self, end_readout_id, expected_fits_ids, expected_json_ids, msg):
         now = time.time()
         found_fits, missing_fits = [], []
         found_json, missing_json = [], []
@@ -112,6 +112,7 @@ class NotificationTracker:
             await self.pending_end_readouts.set(
                 end_readout_id,
                 (
+                    msg,
                     set(expected_fits_ids),
                     set(found_fits),
                     set(expected_json_ids),
@@ -138,6 +139,7 @@ class NotificationTracker:
         resolved = []
         end_items = await self.pending_end_readouts.items()
         for erid, (
+            msg,
             expected_fits,
             found_fits,
             expected_json,
@@ -172,7 +174,7 @@ class NotificationTracker:
                 # Update the found sets in the pending_end_readouts store
                 await self.pending_end_readouts.set(
                     erid,
-                    (expected_fits, found_fits, expected_json, found_json, ts)
+                    (msg, expected_fits, found_fits, expected_json, found_json, ts)
                 )
         return resolved
 
@@ -214,6 +216,14 @@ class NotificationTracker:
     async def get_orphans(self):
         items = await self.orphans.items()
         return [v for k, v in items]
+
+    async def get_orphans_data(self):
+        items = await self.orphans.items()
+        return items
+
+    async def pop_orphan(self, key):
+        orphan = await self.orphans.pop(key)
+        return orphan
 
     async def get_pending_end_readouts(self):
         keys = await self.pending_end_readouts.keys()
