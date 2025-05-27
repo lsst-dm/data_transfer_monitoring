@@ -18,6 +18,7 @@ class NotificationTracker:
     json_file_notifications: AbstractNotificationStore = MemoryNotificationStore()
     pending_end_readouts: AbstractNotificationStore = MemoryNotificationStore()
     orphans: AbstractNotificationStore = MemoryNotificationStore()
+    missing_files: AbstractNotificationStore = MemoryNotificationStore()
     max_file_late_time = constants.MAX_LATE_FILE_TIME
 
     # For singleton periodic cleanup
@@ -76,6 +77,10 @@ class NotificationTracker:
             await self.json_file_notifications.set(file_id, (file_notification, now))
         else:
             raise ValueError(f"Unknown file type: {file_type}")
+
+    async def add_missing_files(self, missing_files: set[str]):
+        for missing_file in missing_files:
+            await self.missing_files.set(missing_file, True)
 
     async def handle_end_readout(self, end_readout_id, expected_fits_ids, expected_json_ids, msg):
         now = time.time()
@@ -168,8 +173,8 @@ class NotificationTracker:
 
             # If all expected files are found, resolve this end readout
             if expected_fits == found_fits and expected_json == found_json:
-                await self.pending_end_readouts.pop(erid)
-                resolved.append(erid)
+                data = await self.pending_end_readouts.pop(erid)
+                resolved.append(data)
             else:
                 # Update the found sets in the pending_end_readouts store
                 await self.pending_end_readouts.set(
@@ -236,4 +241,16 @@ class NotificationTracker:
     async def get_json_file_notifications(self):
         keys = await self.json_file_notifications.keys()
         return list(keys)
+
+    async def get_missing_files(self):
+        missing = await self.missing_files.keys()
+        return list(missing)
+
+    async def is_missing_file(self, file) -> bool:
+         missing_files = await self.get_missing_files()
+         return file in missing_files
+
+    async def pop_missing_file(self, file):
+        removed_file = await self.missing_files.pop(file)
+        return removed_file
 
