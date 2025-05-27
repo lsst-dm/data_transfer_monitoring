@@ -105,37 +105,30 @@ class EndReadoutListener(BaseKafkaListener):
         for key, data in orphan_data:
             msg = data[0]
             if isinstance(msg, FileNotificationModel):
-                # TODO should probably figure out if theres a way to calculate or find
-                # missing end readout files here.
-                # may need to also track processed files in a memory store
-                # to check against
+                is_missing = await self.notification_tracker.is_missing_file(msg.storage_key)
+                if is_missing:
+                    await self.notification_tracker.pop_missing_file(msg.storage_key)
+                    self.total_missing_files.dec()
                 self.total_late_files.inc()
-                self.total_missing_files.dec()
                 if msg.file_type == FileNotificationModel.FITS:
+                    if is_missing:
+                        self.total_missing_fits_files.dec()
                     self.total_late_fits_files.inc()
-                    # TODO here figure out if we can decrement number of missing files
-                    # might need historical data of recent previous end readouts to do this
-                    # going to decrement automatically for now
-                    self.total_missing_fits_files.dec()
                 if msg.file_type == FileNotificationModel.JSON:
+                    if is_missing:
+                        self.total_missing_json_files.dec()
                     self.total_late_json_files.inc()
-                    # TODO here figure out if we can decrement number of missing files
-                    # might need historical data of recent previous end readouts to do this
-                    # going to decrement automatically for now
-                    self.total_missing_json_files.dec()
             if isinstance(msg, EndReadoutModel):
                 msg, expected_fits, found_fits, expected_json, found_json, _ = data
-                # this may not be totally accurate, they may be late and not missing
-                # as late files come in,
-                # they automatically decrement the missing files gauge
-                # this is ok because they wont be matched with any other end readout
-                missing_fits_files = len(expected_fits) - len(found_fits)
-                missing_json_files = len(expected_json) - len(found_json)
-                total_missing_files = missing_fits_files + missing_json_files
-                self.total_missing_files.inc(total_missing_files)
-                self.total_missing_fits_files.inc(missing_fits_files)
-                self.total_missing_json_files.inc(missing_json_files)
+                missing_fits_files = expected_fits - found_fits
+                missing_json_files = expected_json - found_json
+                total_missing_files = missing_fits_files | missing_json_files
+                self.total_missing_files.inc(len(total_missing_files))
+                self.total_missing_fits_files.inc(len(missing_fits_files))
+                self.total_missing_json_files.inc(len(missing_json_files))
                 self.total_incomplete_end_readouts.inc()
+
+                await self.notification_tracker.add_missing_files(total_missing_files)
 
             await self.notification_tracker.pop_orphan(key)
             
