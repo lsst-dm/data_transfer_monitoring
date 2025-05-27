@@ -16,4 +16,6 @@ COPY models .
 
 COPY shared .
 
+COPY main.py .
+
 CMD [ "python", "main.py"]
