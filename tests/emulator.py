@@ -5,7 +5,7 @@ from aiokafka import AIOKafkaProducer
 import botocore
 import json
 
-from tests.fake_data.create_fake_data import create_fake_data
+from tests.fake_data.data_creator import DataCreator
 
 from shared import constants
 from shared.s3_client import AsyncS3Client
@@ -16,8 +16,8 @@ KAFKA_BOOTSTRAP_SERVERS = "localhost:29092"
 class Emulator(object):
     def __init__(
         self,
-        min_chance_of_late_files: float = 0.01,
-        max_chance_of_late_files: float = 0.02,
+        min_chance_of_late_files: float = 0.001,
+        max_chance_of_late_files: float = 0.002,
         min_wait_time: int = 1,
         max_wait_time: int = 5,
         min_late_time: int = 7,
@@ -32,6 +32,7 @@ class Emulator(object):
 
         self.storage = AsyncS3Client()
         self.producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
+        self.data_creator = DataCreator()
 
     async def upload_file(
         self, key, json_body=None, bucket_name=constants.STORAGE_BUCKET_NAME
@@ -90,6 +91,7 @@ class Emulator(object):
         rand_num = random.random()
         should_send_late_files = rand_num < chance_of_late_files
         if should_send_late_files and len(files) > 0:
+            print("sending late files")
             num_late = random.randint(0, len(files))
             late_files = random.sample(files, k=num_late)
             # Remove late files from files_to_send
@@ -150,7 +152,7 @@ class Emulator(object):
 
         try:
             while True:
-                expected_sensors, all_files, end_readout = create_fake_data()
+                expected_sensors, all_files, end_readout = self.data_creator.create_fake_data()
 
                 # Decide if we will send some files late
                 files_to_send, late_files = self.split_late_files(all_files)
