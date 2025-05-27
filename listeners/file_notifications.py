@@ -69,4 +69,4 @@ class FileNotificationListener(BaseKafkaListener):
             msg.storage_key, msg, msg.file_type
         )
         self.record_metrics(msg)
-        logging.info("recieved file notification message")
+        logging.info("received file notification message")
