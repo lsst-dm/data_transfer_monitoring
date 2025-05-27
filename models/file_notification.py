@@ -18,12 +18,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-from dataclasses import dataclass, field
 from datetime import datetime
+from dataclasses import dataclass, field
 from typing import Any, Dict, List
 from pathlib import Path
 from dataclasses_json import dataclass_json, config
-from marshmallow import fields
 
 
 @dataclass_json
@@ -124,5 +123,16 @@ class FileNotificationModel:
         return Path(self.records[0].s3.object.key)
 
     @property
+    def storage_key(self):
+        return self.records[0].s3.object.key
+
+    @property
     def observation_id(self):
         return self.filepath.split("/")[2]
+
+    @property
+    def timestamp(self):
+        """
+            Returns a python utc datetime
+        """
+        return datetime.fromisoformat(self.records[0].event_time)
