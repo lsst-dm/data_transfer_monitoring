@@ -64,7 +64,7 @@ class NotificationTracker:
             await cls.orphans.set(jid, val)
         # Remove expired end_readouts
         end_items = await cls.pending_end_readouts.items()
-        expired = [erid for erid, (_, _, _, _, _, ts) in end_items if now - ts > cls.max_file_late_time]
+        expired = [erid for erid, (_, _, _, _, _, _, _, ts) in end_items if now - ts > cls.max_file_late_time]
         for erid in expired:
             val = await cls.pending_end_readouts.pop(erid)
             await cls.orphans.set(erid, val)
@@ -84,26 +84,38 @@ class NotificationTracker:
 
     async def handle_end_readout(self, end_readout_id, expected_fits_ids, expected_json_ids, msg):
         now = time.time()
-        found_fits, missing_fits = [], []
-        found_json, missing_json = [], []
+        found_fits, missing_fits, late_fits = [], [], []
+        found_json, missing_json, late_json = [], [], []
         for fid in expected_fits_ids:
             val = await self.fits_file_notifications.get(fid)
             if val is not None:
                 found_fits.append(fid)
             else:
-                missing_fits.append(fid)
+                val = await self.orphans.get(fid)
+                if val is not None:
+                    late_fits.append(fid)
+                else:
+                    missing_fits.append(fid)
         for jid in expected_json_ids:
             val = await self.json_file_notifications.get(jid)
             if val is not None:
                 found_json.append(jid)
             else:
-                missing_json.append(jid)
+                val = await self.orphans.get(jid)
+                if val is not None:
+                    late_json.append(jid)
+                else:
+                    missing_json.append(jid)
 
         # Remove found notifications
         for fid in found_fits:
             await self.fits_file_notifications.pop(fid)
         for jid in found_json:
             await self.json_file_notifications.pop(jid)
+        for fid in late_fits:
+            await self.orphans.pop(fid)
+        for jid in late_json:
+            await self.orphans.pop(jid)
 
         if not missing_fits and not missing_json:
             return {
@@ -112,6 +124,8 @@ class NotificationTracker:
                 "found_json": found_json,
                 "missing_fits": [],
                 "missing_json": [],
+                "late_fits": late_fits,
+                "late_json": late_json
             }
         else:
             await self.pending_end_readouts.set(
@@ -120,8 +134,10 @@ class NotificationTracker:
                     msg,
                     set(expected_fits_ids),
                     set(found_fits),
+                    set(late_fits),
                     set(expected_json_ids),
                     set(found_json),
+                    set(late_json),
                     now,
                 ),
             )
@@ -131,6 +147,8 @@ class NotificationTracker:
                 "found_json": found_json,
                 "missing_fits": missing_fits,
                 "missing_json": missing_json,
+                "late_fits": late_fits,
+                "late_json": late_json
             }
 
     async def resolve_pending_end_readouts(self):
@@ -147,15 +165,19 @@ class NotificationTracker:
             msg,
             expected_fits,
             found_fits,
+            late_fits,
             expected_json,
             found_json,
+            late_json,
             ts,
         ) in end_items:
             # Convert to sets in case they're not already (defensive)
             expected_fits = set(expected_fits)
             found_fits = set(found_fits)
+            late_fits = set(late_fits)
             expected_json = set(expected_json)
             found_json = set(found_json)
+            late_json = set(late_json)
 
             # Check and pop new found FITS files
             for fid in expected_fits - found_fits:
@@ -163,6 +185,12 @@ class NotificationTracker:
                 if val is not None:
                     await self.fits_file_notifications.pop(fid)
                     found_fits.add(fid)
+                else:
+                    val = await self.orphans.get(fid)
+                    if val is not None:
+                        await self.orphans.pop(fid)
+                        late_fits.add(fid)
+                        found_fits.add(fid)
 
             # Check and pop new found JSON files
             for jid in expected_json - found_json:
@@ -170,6 +198,12 @@ class NotificationTracker:
                 if val is not None:
                     await self.json_file_notifications.pop(jid)
                     found_json.add(jid)
+                else:
+                    val = await self.orphans.get(jid)
+                    if val is not None:
+                        await self.orphans.pop(jid)
+                        late_json.add(jid)
+                        found_json.add(jid)
 
             # If all expected files are found, resolve this end readout
             if expected_fits == found_fits and expected_json == found_json:
@@ -179,7 +213,7 @@ class NotificationTracker:
                 # Update the found sets in the pending_end_readouts store
                 await self.pending_end_readouts.set(
                     erid,
-                    (msg, expected_fits, found_fits, expected_json, found_json, ts)
+                    (msg, expected_fits, found_fits, late_fits, expected_json, found_json, late_json, ts)
                 )
         return resolved
 
@@ -247,8 +281,8 @@ class NotificationTracker:
         return list(missing)
 
     async def is_missing_file(self, file) -> bool:
-         missing_files = await self.get_missing_files()
-         return file in missing_files
+        missing_files = await self.get_missing_files()
+        return file in missing_files
 
     async def pop_missing_file(self, file):
         removed_file = await self.missing_files.pop(file)

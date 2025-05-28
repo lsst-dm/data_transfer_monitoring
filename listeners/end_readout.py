@@ -103,11 +103,12 @@ class EndReadoutListener(BaseKafkaListener):
         """
         orphan_data = await self.notification_tracker.get_orphans_data()
         for key, data in orphan_data:
+            print("key: ", key)
             msg = data[0]
             if isinstance(msg, FileNotificationModel):
-                is_missing = await self.notification_tracker.is_missing_file(msg.storage_key)
+                is_missing = await self.notification_tracker.is_missing_file(key)
                 if is_missing:
-                    await self.notification_tracker.pop_missing_file(msg.storage_key)
+                    await self.notification_tracker.pop_missing_file(key)
                     self.total_missing_files.dec()
                 self.total_late_files.inc()
                 if msg.file_type == FileNotificationModel.FITS:
@@ -119,13 +120,17 @@ class EndReadoutListener(BaseKafkaListener):
                         self.total_missing_json_files.dec()
                     self.total_late_json_files.inc()
             if isinstance(msg, EndReadoutModel):
-                msg, expected_fits, found_fits, expected_json, found_json, _ = data
+                msg, expected_fits, found_fits, late_fits, expected_json, found_json, late_json, _ = data
                 missing_fits_files = expected_fits - found_fits
                 missing_json_files = expected_json - found_json
                 total_missing_files = missing_fits_files | missing_json_files
+                print("missing files: ", total_missing_files)
                 self.total_missing_files.inc(len(total_missing_files))
                 self.total_missing_fits_files.inc(len(missing_fits_files))
                 self.total_missing_json_files.inc(len(missing_json_files))
+                self.total_late_fits_files.inc(len(late_fits))
+                self.total_late_json_files.inc(len(late_json))
+                self.total_late_files.inc(len(late_json) + len(late_fits))
                 self.total_incomplete_end_readouts.inc()
 
                 await self.notification_tracker.add_missing_files(total_missing_files)
@@ -139,7 +144,13 @@ class EndReadoutListener(BaseKafkaListener):
         if self.should_skip(msg):
             return
 
-        await self.notification_tracker.resolve_pending_end_readouts()
+        resolved_end_readouts = await self.notification_tracker.resolve_pending_end_readouts()
+        for readout in resolved_end_readouts:
+            pass
+            _, _, _, late_fits, _, _, late_json, _ = readout
+            self.total_late_files.inc(len(late_fits) + len(late_json))
+            self.total_late_fits_files.inc(len(late_fits))
+            self.total_late_json_files.inc(len(late_json))
 
         await self.record_metrics_for_orphans()
         await self.process_end_readout(msg)
