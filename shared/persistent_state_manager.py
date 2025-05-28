@@ -1,7 +1,7 @@
 import asyncpg
 from typing import Any, List, Dict
 
-from shared.constants import POSTGRES_CONNECTION_STRING
+from shared.config import POSTGRES_CONNECTION_STRING
 
 
 class PersistentStateClient:
