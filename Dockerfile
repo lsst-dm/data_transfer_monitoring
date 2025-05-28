@@ -10,10 +10,12 @@ COPY requirements.txt requirements.txt
 
 RUN pip install -r requirements.txt
 
-COPY listeners .
+COPY listeners listeners/
 
-COPY models .
+COPY models models/
 
-COPY shared .
+COPY shared shared/
+
+COPY main.py .
 
 CMD [ "python", "main.py"]
