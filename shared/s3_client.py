@@ -6,7 +6,6 @@ from typing import Optional
 from typing import Dict
 from typing import Any
 
-from shared import constants
 from shared import config
 from models.expected_sensors import ExpectedSensorsModel
 
@@ -19,19 +18,19 @@ class AsyncS3Client:
     def __init__(self):
         self.endpoint = self.get_endpoint()
         self.session = aioboto3.Session(
-            aws_access_key_id=constants.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=constants.AWS_SECRET_ACCESS_KEY,
+            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
         )
 
     def get_endpoint(self):
         if config.IS_PROD == "True":
-            return constants.S3_ENDPOINT_URL
+            return config.S3_ENDPOINT_URL
         else:
             return "http://localhost:4566"
 
     async def list_files(
         self,
-        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+        bucket_name: str = config.STORAGE_BUCKET_NAME,
         prefix: Optional[str] = "",
     ) -> List[str]:
         """Asynchronously list all file keys in the specified S3 bucket (optionally with prefix)."""
@@ -48,7 +47,7 @@ class AsyncS3Client:
     async def check_if_key_exists(
         self,
         key: str,
-        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+        bucket_name: str = config.STORAGE_BUCKET_NAME,
     ):
         async with self.session.client("s3", endpoint_url=self.endpoint) as s3_client:
             try:
@@ -63,7 +62,7 @@ class AsyncS3Client:
 
     async def contains_expected_sensors_file(
         self,
-        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+        bucket_name: str = config.STORAGE_BUCKET_NAME,
         prefix: Optional[str] = "",
     ) -> bool:
         """
@@ -72,13 +71,13 @@ class AsyncS3Client:
         """
         files = await self.list_files(bucket_name, prefix)
         for file_key in files:
-            if constants.EXPECTED_SENSORS_FILENAME in file_key:
+            if config.EXPECTED_SENSORS_FILENAME in file_key:
                 return True
         return False
 
     async def download_and_parse_expected_sensors_file(
         self,
-        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+        bucket_name: str = config.STORAGE_BUCKET_NAME,
         prefix: Optional[str] = "",
     ) -> Optional[Dict[str, Any]]:
         """
@@ -88,7 +87,7 @@ class AsyncS3Client:
         """
         files = await self.list_files(bucket_name, prefix)
         target_file = next(
-            (key for key in files if constants.EXPECTED_SENSORS_FILENAME in key), None
+            (key for key in files if config.EXPECTED_SENSORS_FILENAME in key), None
         )
         if not target_file:
             return None

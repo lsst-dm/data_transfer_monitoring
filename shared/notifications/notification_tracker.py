@@ -7,7 +7,7 @@ from shared.notifications.stores.memory_notification_store import (
 from shared.notifications.stores.abstract_notification_store import (
     AbstractNotificationStore,
 )
-from shared import constants
+from shared import config
 from models.file_notification import FileNotificationModel
 from models.end_readout import EndReadoutModel
 
@@ -19,7 +19,7 @@ class NotificationTracker:
     pending_end_readouts: AbstractNotificationStore = MemoryNotificationStore()
     orphans: AbstractNotificationStore = MemoryNotificationStore()
     missing_files: AbstractNotificationStore = MemoryNotificationStore()
-    max_file_late_time = constants.MAX_LATE_FILE_TIME
+    max_file_late_time = config.MAX_LATE_FILE_TIME
 
     # For singleton periodic cleanup
     _cleanup_task = None

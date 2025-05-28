@@ -2,7 +2,6 @@ import asyncio
 import logging
 from prometheus_client import start_http_server
 
-from shared import constants
 from shared import config
 from listeners.file_notifications import FileNotificationListener
 from listeners.end_readout import EndReadoutListener
@@ -17,7 +16,7 @@ from shared.notifications.notification_tracker import NotificationTracker
 # counter for .json file
 # counter for end run kafka message
 # if files are missing then generate a log message
-# coutner for missing files over time
+# counter for missing files over time
 #
 # add histogram summary over sliding time window
 # add summary of files processed during the window: prometheus Summary
@@ -49,14 +48,14 @@ async def main():
 
     # start our kafka listeners
     tasks.append(
-        FileNotificationListener(constants.FILE_NOTIFICATION_TOPIC_NAME).start()
+        FileNotificationListener(config.FILE_NOTIFICATION_TOPIC_NAME).start()
     )
-    if config.SHOULD_RUN_END_READOUT_LISTENER:
+    if config.END_READOUT_LISTENER_ENABLED:
         logging.info("starting end readout listener")
-        tasks.append(EndReadoutListener(constants.END_READOUT_TOPIC_NAME).start())
+        tasks.append(EndReadoutListener(config.END_READOUT_TOPIC_NAME).start())
 
     await NotificationTracker.start_periodic_cleanup(
-        interval_seconds=constants.NOTIFICATION_CLEANUP_INTERVAL
+        interval_seconds=config.NOTIFICATION_CLEANUP_INTERVAL
     )
 
     await asyncio.gather(*tasks)
