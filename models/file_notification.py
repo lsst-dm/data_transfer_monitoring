@@ -107,7 +107,7 @@ class Record:
 @dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class FileNotificationModel:
-    records: List[Record]
+    records: List[Record] = field(metadata=config(field_name="Records"))
     JSON = "json"
     FITS = "fits"
 
