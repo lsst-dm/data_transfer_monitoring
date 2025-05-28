@@ -48,6 +48,7 @@ async def main():
     start_http_server(8000)
 
     # start our kafka listeners
+    logging.info("starting file notification listener...")
     tasks.append(
         FileNotificationListener(constants.FILE_NOTIFICATION_TOPIC_NAME).start()
     )
@@ -55,9 +56,11 @@ async def main():
         logging.info("starting end readout listener")
         tasks.append(EndReadoutListener(constants.END_READOUT_TOPIC_NAME).start())
 
+    logging.info("starting notification tracker periodic cleanup task...")
     await NotificationTracker.start_periodic_cleanup(
         interval_seconds=constants.NOTIFICATION_CLEANUP_INTERVAL
     )
+    logging.info("started periodic cleanup successfully")
 
     await asyncio.gather(*tasks)
 

@@ -1,4 +1,5 @@
 import ssl
+import logging
 from abc import ABC
 from abc import abstractmethod
 
@@ -42,15 +43,20 @@ class BaseKafkaListener(ABC):
             self.topic,
             bootstrap_servers=self.bootstrap_servers,
             group_id=self.group_id,
-            auto_offset_reset="earliest",
+            auto_offset_reset="latest",
             **self.auth_params
         )
+        logging.info("starting consumer...")
         await self.consumer.start()
+        logging.info("consumer started successfully!")
         try:
+            logging.info("listening to messages...")
             async for msg in self.consumer:
+                logging.info("recieved message: ", msg)
                 json_string = msg.value.decode("utf-8")
                 await self.handle_message(json_string)
         finally:
+            logging.info("stopping consumer")
             await self.consumer.stop()
 
     @abstractmethod
