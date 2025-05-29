@@ -52,9 +52,9 @@ class BaseKafkaListener(ABC):
         try:
             logging.info("listening to messages...")
             async for msg in self.consumer:
-                logging.info("recieved message: ", msg)
-                json_string = msg.value.decode("utf-8")
-                await self.handle_message(json_string)
+                logging.info("received message: ", msg)
+                # json_string = msg.value.decode("utf-8")
+                await self.handle_message(msg.value)
         finally:
             logging.info("stopping consumer")
             await self.consumer.stop()
