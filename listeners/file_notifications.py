@@ -17,18 +17,18 @@ class FileNotificationListener(BaseKafkaListener):
         self.notification_tracker = NotificationTracker()
         self.time_of_last_message = self.get_initial_time_of_last_message()
         self.total_messages_received = Counter(
-            "file_messages_received_total", "Total number of file messages received"
+            "dtm_file_messages_received_total", "Total number of file messages received"
         )
         self.fits_files_received = Counter(
-            "file_messages_received_fits_total",
+            "dtm_file_messages_received_fits_total",
             "Total number of .fits file messages received",
         )
         self.json_files_received = Counter(
-            "file_messages_received_header_total",
+            "dtm_file_messages_received_header_total",
             "Total number of .json header file messages received",
         )
         self.file_message_histogram = Histogram(
-            "file_messages_received_seconds",
+            "dtm_file_messages_received_seconds",
             "Histogram of file message receive intervals (Seconds)",
             buckets=[1, 2, 4, 8, 16],
         )

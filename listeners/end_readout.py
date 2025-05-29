@@ -17,38 +17,38 @@ class EndReadoutListener(BaseKafkaListener):
         self.notification_tracker = NotificationTracker()
 
         self.total_expected_files = Counter(
-            "total_expected_files", "Total number of expected files"
+            "dtm_total_expected_files", "Total number of expected files"
         )
 
         self.total_missing_files = Gauge(
-            "total_missing_files", "Total number of missing files"
+            "dtm_total_missing_files", "Total number of missing files"
         )
 
         self.total_late_files = Counter(
-            "total_late_files", "Total number of late files"
+            "dtm_total_late_files", "Total number of late files"
         )
 
         self.total_missing_fits_files = Gauge(
-            "total_missing_fits_files", "Total number of missing .fits files"
+            "dtm_total_missing_fits_files", "Total number of missing .fits files"
         )
 
         self.total_missing_json_files = Gauge(
-            "total_missing_json_files", "Total number of missing .json files"
+            "dtm_total_missing_json_files", "Total number of missing .json files"
         )
 
         self.total_late_fits_files = Counter(
-            "total_late_fits_files", "Total number of late .fits files"
+            "dtm_total_late_fits_files", "Total number of late .fits files"
         )
 
         self.total_late_json_files = Counter(
-            "total_late_json_files", "Total number of late .json files"
+            "dtm_total_late_json_files", "Total number of late .json files"
         )
         self.total_missing_end_readouts = Gauge(
-            "total_missing_end_readouts", "Total number of missing end readouts"
+            "dtm_total_missing_end_readouts", "Total number of missing end readouts"
         )
 
         self.total_incomplete_end_readouts = Counter(
-            "total_incomplete_end_readouts", "Total number of incomplete end readouts"
+            "dtm_total_incomplete_end_readouts", "Total number of incomplete end readouts"
         )
 
     def get_expected_file_keys(self, sensors: ExpectedSensorsModel):
