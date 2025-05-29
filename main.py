@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import sys
 from prometheus_client import start_http_server
 
 from shared import constants
@@ -6,7 +8,6 @@ from shared import config
 from listeners.file_notifications import FileNotificationListener
 from listeners.end_readout import EndReadoutListener
 from shared.notifications.notification_tracker import NotificationTracker
-from shared.log import log
 
 # file notification with expected sensors name in it
 # expected sensors lives in s3 bucket
@@ -39,6 +40,8 @@ from shared.log import log
 # file notification times are UTC
 
 # unexplained file omission (UFO)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 async def main():

@@ -1,5 +1,6 @@
 import time
 import asyncio
+import logging
 
 from shared.notifications.stores.memory_notification_store import (
     MemoryNotificationStore,
@@ -10,7 +11,8 @@ from shared.notifications.stores.abstract_notification_store import (
 from shared import constants
 from models.file_notification import FileNotificationModel
 from models.end_readout import EndReadoutModel
-from shared.log import log
+
+log = logging.getLogger(__name__)
 
 
 class NotificationTracker:
@@ -79,9 +81,9 @@ class NotificationTracker:
         else:
             raise ValueError(f"Unknown file type: {file_type}")
 
-    async def add_missing_files(self, missing_files: set[str]):
+    async def add_missing_files(self, missing_files: set[str], end_readout: str):
         for missing_file in missing_files:
-            await self.missing_files.set(missing_file, True)
+            await self.missing_files.set(missing_file, end_readout)
 
     async def handle_end_readout(self, end_readout_id, expected_fits_ids, expected_json_ids, msg):
         now = time.time()
