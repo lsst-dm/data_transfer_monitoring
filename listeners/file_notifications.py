@@ -1,5 +1,4 @@
 from datetime import datetime
-import logging
 
 from prometheus_client import Histogram
 from prometheus_client import Counter
@@ -7,6 +6,7 @@ from prometheus_client import Counter
 from listeners.base_listener import BaseKafkaListener
 from models.file_notification import FileNotificationModel
 from shared.notifications.notification_tracker import NotificationTracker
+from shared.log import log
 
 
 class FileNotificationListener(BaseKafkaListener):
@@ -62,10 +62,11 @@ class FileNotificationListener(BaseKafkaListener):
         self.time_of_last_message = now
 
     async def handle_message(self, msg_obj):
-        logging.info("received file notification message")
-        logging.info(f"file notification json: {msg_obj}")
+        log.info("received file notification message")
+        log.info(f"file notification json: {msg_obj}")
         msg = FileNotificationModel.from_json(msg_obj)
-        logging.info(f"file notification recieved: {msg}")
+        log.info(f"file notification recieved: {msg}")
+        # print("recieved message")
         if self.should_skip(msg):
             return
         await self.notification_tracker.add_file_notification(

@@ -1,5 +1,4 @@
 import ssl
-import logging
 from abc import ABC
 from abc import abstractmethod
 
@@ -8,6 +7,7 @@ from aiokafka import AIOKafkaConsumer
 from shared import constants
 from shared import config
 from shared.s3_client import AsyncS3Client
+from shared.log import log
 
 
 class BaseKafkaListener(ABC):
@@ -46,17 +46,17 @@ class BaseKafkaListener(ABC):
             auto_offset_reset="latest",
             **self.auth_params
         )
-        logging.info("starting consumer...")
+        log.info("starting consumer...")
         await self.consumer.start()
-        logging.info("consumer started successfully!")
+        log.info("consumer started successfully!")
         try:
-            logging.info("listening to messages...")
+            log.info("listening to messages...")
             async for msg in self.consumer:
-                logging.info("received message: ", msg)
+                log.info(f"received message: {msg}")
                 # json_string = msg.value.decode("utf-8")
                 await self.handle_message(msg.value)
         finally:
-            logging.info("stopping consumer")
+            log.info("stopping consumer")
             await self.consumer.stop()
 
     @abstractmethod

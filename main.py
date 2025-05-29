@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from prometheus_client import start_http_server
 
 from shared import constants
@@ -7,6 +6,7 @@ from shared import config
 from listeners.file_notifications import FileNotificationListener
 from listeners.end_readout import EndReadoutListener
 from shared.notifications.notification_tracker import NotificationTracker
+from shared.log import log
 
 # file notification with expected sensors name in it
 # expected sensors lives in s3 bucket
@@ -48,19 +48,19 @@ async def main():
     start_http_server(8000)
 
     # start our kafka listeners
-    logging.info("starting file notification listener...")
+    log.info("starting file notification listener...")
     tasks.append(
         FileNotificationListener(constants.FILE_NOTIFICATION_TOPIC_NAME).start()
     )
     if config.SHOULD_RUN_END_READOUT_LISTENER:
-        logging.info("starting end readout listener")
+        log.info("starting end readout listener")
         tasks.append(EndReadoutListener(constants.END_READOUT_TOPIC_NAME).start())
 
-    logging.info("starting notification tracker periodic cleanup task...")
+    log.info("starting notification tracker periodic cleanup task...")
     await NotificationTracker.start_periodic_cleanup(
         interval_seconds=constants.NOTIFICATION_CLEANUP_INTERVAL
     )
-    logging.info("started periodic cleanup successfully")
+    log.info("started periodic cleanup successfully")
 
     await asyncio.gather(*tasks)
 

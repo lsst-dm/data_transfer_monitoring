@@ -10,6 +10,7 @@ from shared.notifications.stores.abstract_notification_store import (
 from shared import constants
 from models.file_notification import FileNotificationModel
 from models.end_readout import EndReadoutModel
+from shared.log import log
 
 
 class NotificationTracker:
@@ -38,7 +39,7 @@ class NotificationTracker:
                     try:
                         await cls.cleanup()
                     except Exception as e:
-                        print(f"Cleanup error: {e}")
+                        log.error(f"Cleanup error: {e}")
                     await asyncio.sleep(interval_seconds)
 
             cls._cleanup_task = asyncio.create_task(_periodic_cleanup())

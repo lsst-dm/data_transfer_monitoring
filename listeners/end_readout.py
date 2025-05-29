@@ -1,5 +1,3 @@
-import logging
-
 from prometheus_client import Counter
 from prometheus_client import Gauge
 
@@ -8,6 +6,7 @@ from models.end_readout import EndReadoutModel
 from models.expected_sensors import ExpectedSensorsModel
 from models.file_notification import FileNotificationModel
 from shared.notifications.notification_tracker import NotificationTracker
+from shared.log import log
 
 
 class EndReadoutListener(BaseKafkaListener):
@@ -136,8 +135,8 @@ class EndReadoutListener(BaseKafkaListener):
                 await self.notification_tracker.add_missing_files(total_missing_files)
 
             await self.notification_tracker.pop_orphan(key)
-            
-        logging.info("orphan data: ", len(orphan_data))
+
+        log.info("orphan data: ", len(orphan_data))
 
     async def handle_message(self, message):
         msg = EndReadoutModel.from_json(message)
