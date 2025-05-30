@@ -1,15 +1,19 @@
 from faker import Faker
 import random
 from collections import OrderedDict
+import logging
 
 from tests.fake_data.end_readout import fake_end_readout
 from tests.fake_data.file_notification import fake_file_notification
 from tests.fake_data.expected_sensors import fake_expected_sensors
 
+log = logging.getLogger(__name__)
+
 
 class DataCreator(object):
     expected_missing_files = 0
     fake = Faker()
+
     def random_image_object(self):
         # Randomly pick source and controller codes
         image_source = self.fake.random_element(
@@ -49,9 +53,9 @@ class DataCreator(object):
             rand_num = random.random()
             should_fail_write = rand_num < file_failure_rate
             if should_fail_write:
-                print("failing to write file")
+                log.info("failing to write file")
                 self.expected_missing_files += 1
-                print(f"expected missing files: {self.expected_missing_files}")
+                log.info(f"expected missing files: {self.expected_missing_files}")
                 continue
             else:
                 json_file_objects.append(
@@ -62,6 +66,9 @@ class DataCreator(object):
         for sensor_name in sensor_names:
             should_fail_write = random.random() < file_failure_rate
             if should_fail_write:
+                log.info("failing to write file")
+                self.expected_missing_files += 1
+                log.info(f"expected missing files: {self.expected_missing_files}")
                 continue
             else:
                 fits_file_objects.append(

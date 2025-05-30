@@ -28,14 +28,14 @@ from dataclasses_json import dataclass_json, config
 @dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class OwnerIdentity:
-    principal_id: str = field(metadata=config(field_name="principal-id"))
+    principal_id: str = field(metadata=config(field_name="principalId"))
 
 
 @dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class S3Bucket:
     name: str
-    owner_identity: OwnerIdentity = field(metadata=config(field_name="owner-identity"))
+    owner_identity: OwnerIdentity = field(metadata=config(field_name="ownerIdentity"))
     arn: str
     id: str
 
@@ -70,7 +70,7 @@ class UserIdentity:
 @dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class RequestParameters:
-    source_ip_address: str = field(metadata=config(field_name="sourceIpAddress"))
+    source_ip_address: str = field(metadata=config(field_name="sourceIPAddress"))
 
 
 @dataclass_json

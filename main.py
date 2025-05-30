@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import sys
 from prometheus_client import start_http_server
 
 from shared import constants
@@ -39,6 +40,8 @@ from shared.notifications.notification_tracker import NotificationTracker
 # file notification times are UTC
 
 # unexplained file omission (UFO)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 async def main():
@@ -48,16 +51,19 @@ async def main():
     start_http_server(8000)
 
     # start our kafka listeners
+    log.info("starting file notification listener...")
     tasks.append(
         FileNotificationListener(constants.FILE_NOTIFICATION_TOPIC_NAME).start()
     )
     if config.SHOULD_RUN_END_READOUT_LISTENER:
-        logging.info("starting end readout listener")
+        log.info("starting end readout listener")
         tasks.append(EndReadoutListener(constants.END_READOUT_TOPIC_NAME).start())
 
+    log.info("starting notification tracker periodic cleanup task...")
     await NotificationTracker.start_periodic_cleanup(
         interval_seconds=constants.NOTIFICATION_CLEANUP_INTERVAL
     )
+    log.info("started periodic cleanup successfully")
 
     await asyncio.gather(*tasks)
 

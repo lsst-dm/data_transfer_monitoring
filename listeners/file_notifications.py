@@ -1,5 +1,5 @@
-from datetime import datetime
 import logging
+from datetime import datetime
 
 from prometheus_client import Histogram
 from prometheus_client import Counter
@@ -7,6 +7,8 @@ from prometheus_client import Counter
 from listeners.base_listener import BaseKafkaListener
 from models.file_notification import FileNotificationModel
 from shared.notifications.notification_tracker import NotificationTracker
+
+log = logging.getLogger(__name__)
 
 
 class FileNotificationListener(BaseKafkaListener):
@@ -17,18 +19,18 @@ class FileNotificationListener(BaseKafkaListener):
         self.notification_tracker = NotificationTracker()
         self.time_of_last_message = self.get_initial_time_of_last_message()
         self.total_messages_received = Counter(
-            "file_messages_received_total", "Total number of file messages received"
+            "dtm_file_messages_received_total", "Total number of file messages received"
         )
         self.fits_files_received = Counter(
-            "file_messages_received_fits_total",
+            "dtm_file_messages_received_fits_total",
             "Total number of .fits file messages received",
         )
         self.json_files_received = Counter(
-            "file_messages_received_header_total",
+            "dtm_file_messages_received_header_total",
             "Total number of .json header file messages received",
         )
         self.file_message_histogram = Histogram(
-            "file_messages_received_seconds",
+            "dtm_file_messages_received_seconds",
             "Histogram of file message receive intervals (Seconds)",
             buckets=[1, 2, 4, 8, 16],
         )
@@ -62,11 +64,13 @@ class FileNotificationListener(BaseKafkaListener):
         self.time_of_last_message = now
 
     async def handle_message(self, msg_obj):
+        log.info("received file notification message")
+        log.debug(f"file notification json: {msg_obj}")
         msg = FileNotificationModel.from_json(msg_obj)
+        log.debug(f"file notification recieved: {msg}")
         if self.should_skip(msg):
             return
         await self.notification_tracker.add_file_notification(
             msg.storage_key, msg, msg.file_type
         )
         self.record_metrics(msg)
-        logging.info("received file notification message")

@@ -1,9 +1,9 @@
-import logging
 import asyncio
 import random
 from aiokafka import AIOKafkaProducer
 import botocore
 import json
+import logging
 
 from tests.fake_data.data_creator import DataCreator
 
@@ -11,6 +11,8 @@ from shared import constants
 from shared.s3_client import AsyncS3Client
 
 KAFKA_BOOTSTRAP_SERVERS = "localhost:29092"
+
+log = logging.getLogger(__name__)
 
 
 class Emulator(object):
@@ -44,9 +46,9 @@ class Emulator(object):
         body = b""
         content_type = "application/octet-stream"
         if json_body is not None:
-            body = json.dumps(json_body).encode("utf-8")
+            body = json.dumps(json_body).encode()
             content_type = "application/json"
-            logging.info("uploading expected sensors file: ", key)
+            log.info("uploading expected sensors file: ", key)
 
         async with self.storage.session.client(
             "s3", endpoint_url=self.storage.endpoint
@@ -61,18 +63,18 @@ class Emulator(object):
         ) as s3:
             try:
                 await s3.head_bucket(Bucket=constants.STORAGE_BUCKET_NAME)
-                logging.info(f"Bucket '{constants.STORAGE_BUCKET_NAME}' exists.")
+                log.info(f"Bucket '{constants.STORAGE_BUCKET_NAME}' exists.")
             except botocore.exceptions.ClientError as e:
                 error_code = e.response["Error"]["Code"]
                 if error_code == "404":
-                    logging.info(
+                    log.info(
                         f"Bucket '{constants.STORAGE_BUCKET_NAME}' does not exist. Creating it..."
                     )
                     await s3.create_bucket(
                         Bucket=constants.STORAGE_BUCKET_NAME,
                     )
                 elif error_code == "BucketAlreadyOwnedByYou":
-                    logging.info(
+                    log.info(
                         f"Bucket '{constants.STORAGE_BUCKET_NAME}' already exists and is owned by you. Proceeding."
                     )
                 else:
@@ -91,7 +93,7 @@ class Emulator(object):
         rand_num = random.random()
         should_send_late_files = rand_num < chance_of_late_files
         if should_send_late_files and len(files) > 0:
-            print("sending late files")
+            log.info("sending late files")
             num_late = random.randint(0, len(files))
             late_files = random.sample(files, k=num_late)
             # Remove late files from files_to_send
@@ -104,7 +106,7 @@ class Emulator(object):
             Sends file notifications for the provided files
         """
         async def notify(file_obj):
-            msg = file_obj.to_json().encode("utf-8")
+            msg = file_obj.to_json().encode()
             await self.producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
 
         await asyncio.gather(*(notify(f) for f in files))
@@ -133,11 +135,11 @@ class Emulator(object):
         await self.send_file_notifications(confirmed_files)
 
     async def upload_files_and_send_notifications(self, files):
-        logging.info("uploading files")
+        log.info("uploading files")
         for file_obj in files:
             key = file_obj.records[0].s3.object.key
             await self.upload_file(key)
-            msg = file_obj.to_json().encode("utf-8")
+            msg = file_obj.to_json().encode()
             await self.producer.send_and_wait(
                 constants.FILE_NOTIFICATION_TOPIC_NAME, msg
             )
@@ -147,7 +149,7 @@ class Emulator(object):
             # Wait up to 7 seconds before sending late file notifications
             await asyncio.sleep(random.randint(self.min_late_time, self.max_late_time))
             for file_obj in late_files:
-                msg = file_obj.to_json().encode("utf-8")
+                msg = file_obj.to_json().encode()
                 await self.producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
 
         try:
@@ -165,9 +167,9 @@ class Emulator(object):
                 # Prepare on-time file notifications and end readout
                 notifications = []
                 for file_obj in files_to_send:
-                    msg = file_obj.to_json().encode("utf-8")
+                    msg = file_obj.to_json().encode()
                     notifications.append(("file", msg))
-                end_readout_msg = end_readout.to_json().encode("utf-8")
+                end_readout_msg = end_readout.to_json().encode()
                 notifications.append(("end_readout", end_readout_msg))
 
                 # Shuffle and send on-time notifications and end readout
