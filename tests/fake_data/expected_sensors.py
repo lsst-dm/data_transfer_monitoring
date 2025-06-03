@@ -14,13 +14,13 @@ def generate_expected_sensors():
         if r % 10 == 0 or r % 10 == 4:  # For R00_SW0, R00_SW1, R04_SW0, etc.
             for sw in range(2):
                 sensors[f"R{r:02d}_SW{sw}"] = fake.random_element(
-                    elements=["SCIENCE", "ENGINEERING", "CALIBRATION"]
+                    elements=["SCIENCE", "GUIDER"]
                 )
         if r % 10 != 0 and r % 10 != 4:  # For R01_S00, R01_S01, ..., R43_S22
             for s1 in range(3):
                 for s2 in range(3):
                     sensors[f"R{r:02d}_S{s1}{s2}"] = fake.random_element(
-                        elements=["SCIENCE", "ENGINEERING", "CALIBRATION"]
+                        elements=["SCIENCE", "GUIDER"]
                     )
     return sensors
 
