@@ -1,3 +1,4 @@
+import logging
 import json
 import aioboto3
 from botocore.exceptions import ClientError
@@ -10,7 +11,7 @@ from shared import constants
 from shared import config
 from models.expected_sensors import ExpectedSensorsModel
 
-# TODO change this to 
+log = logging.getLogger(__name__)
 
 
 class AsyncS3Client:
@@ -91,6 +92,7 @@ class AsyncS3Client:
             (key for key in files if constants.EXPECTED_SENSORS_FILENAME in key), None
         )
         if not target_file:
+            log.info(f"S3 client failed to find expected sensors file for bucket: {bucket_name}, prefix: {prefix}")
             return None
 
         async with self.session.client(
