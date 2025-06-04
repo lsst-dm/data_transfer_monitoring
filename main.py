@@ -4,7 +4,6 @@ import sys
 from prometheus_client import start_http_server
 
 from shared import constants
-from shared import config
 from listeners.file_notifications import FileNotificationListener
 from listeners.end_readout import EndReadoutListener
 from shared.notifications.notification_tracker import NotificationTracker
@@ -41,7 +40,7 @@ from shared.notifications.notification_tracker import NotificationTracker
 
 # unexplained file omission (UFO)
 # Logging config
-if config.DEBUG_LOGS == "true":
+if constants.DEBUG_LOGS == "true":
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 else:
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -57,12 +56,36 @@ async def main():
 
     # start our kafka listeners
     log.info("starting file notification listener...")
+    file_notification_params = {
+        "topic": constants.FILE_NOTIFICATION_TOPIC_NAME,
+        "bootstrap_servers": constants.FILE_NOTIFICATION_KAFKA_BOOTSTRAP_SERVERS,
+        "group_id": constants.FILE_NOTIFICATION_KAFKA_GROUP_ID,
+    }
     tasks.append(
-        FileNotificationListener(constants.FILE_NOTIFICATION_TOPIC_NAME).start()
+        FileNotificationListener(
+            **file_notification_params
+        ).start()
     )
-    if config.SHOULD_RUN_END_READOUT_LISTENER:
+
+    if constants.SHOULD_RUN_END_READOUT_LISTENER:
         log.info("starting end readout listener")
-        tasks.append(EndReadoutListener(constants.END_READOUT_TOPIC_NAME).start())
+        end_readout_listener_params = {
+            "topic": constants.END_READOUT_TOPIC_NAME,
+            "bootstrap_servers": constants.END_READOUT_KAFKA_BOOTSTRAP_SERVERS,
+            "group_id": constants.END_READOUT_KAFKA_GROUP_ID,
+        }
+        if constants.IS_PROD == "True":
+            end_readout_listener_params["auth"] = {
+                    "security_proticol": constants.END_READOUT_SECURITY_PROTICOL,
+                    "sasl_mechanism": constants.END_READOUT_SASL_MECHANISM,
+                    "sasl_plain_username": constants.END_READOUT_SASL_USERNAME,
+                    "sasl_plain_password": constants.END_READOUT_SASL_PASSWORD,
+                }
+        tasks.append(
+            EndReadoutListener(
+                **end_readout_listener_params
+            ).start()
+        )
 
     log.info("starting notification tracker periodic cleanup task...")
     await NotificationTracker.start_periodic_cleanup(
