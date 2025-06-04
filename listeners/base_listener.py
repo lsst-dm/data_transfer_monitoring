@@ -5,8 +5,6 @@ from abc import abstractmethod
 
 from aiokafka import AIOKafkaConsumer
 
-from shared import constants
-from shared import config
 from shared.s3_client import AsyncS3Client
 
 log = logging.getLogger(__name__)
@@ -15,16 +13,16 @@ log = logging.getLogger(__name__)
 class BaseKafkaListener(ABC):
     def __init__(
         self,
-        topic,
-        bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS,
-        group_id=config.KAFKA_GROUP_ID,
-        use_auth=False,
+        topic=None,
+        bootstrap_servers=None,
+        group_id=None,
+        auth=None,
         metric_prefix="dtm",
     ):
         self.topic = topic
         self.bootstrap_servers = bootstrap_servers
         self.group_id = group_id
-        self.use_auth = use_auth
+        self.auth = auth
         self.metric_prefix = metric_prefix
         self.consumer = None
         self.storage_client = AsyncS3Client()
@@ -40,14 +38,8 @@ class BaseKafkaListener(ABC):
         self.auth_params = self.get_auth_params()
 
     def get_auth_params(self):
-        if self.use_auth:
-            return {
-                "security_protocol": constants.SECURITY_PROTOCOL,
-                "sasl_mechanism": constants.SASL_MECHANISM,
-                "sasl_plain_username": constants.SASL_USERNAME,
-                "sasl_plain_password": constants.SASL_PASSWORD,
-                "ssl_context": self.ssl_context,
-            }
+        if self.auth:
+            return self.auth
         return {
             "security_protocol": "PLAINTEXT",
         }
