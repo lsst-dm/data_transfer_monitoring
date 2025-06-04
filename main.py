@@ -40,7 +40,12 @@ from shared.notifications.notification_tracker import NotificationTracker
 # file notification times are UTC
 
 # unexplained file omission (UFO)
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+# Logging config
+if config.DEBUG_LOGS == "true":
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+else:
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
 log = logging.getLogger(__name__)
 
 
