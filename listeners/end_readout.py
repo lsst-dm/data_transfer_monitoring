@@ -6,7 +6,6 @@ from prometheus_client import Gauge
 
 from listeners.base_listener import BaseKafkaListener
 from models.end_readout import EndReadoutModel
-from models.expected_sensors import ExpectedSensorsModel
 from models.file_notification import FileNotificationModel
 from shared.notifications.notification_tracker import NotificationTracker
 
@@ -157,9 +156,9 @@ class EndReadoutListener(BaseKafkaListener):
                     f"seqnum={msg.private_seqNum}"
                     f"expect_s={len(all_expected_science)}"
                     f"expect_g={len(all_expected_guider)}"
-                    f"found_s={len(all_expected_science - missing_science)}"    
-                    f"found_g={len(all_expected_guider - missing_guider)}"    
-                    f"{'SOME MISSING' if len(total_missing_files) > 0 else 'ALL FOUND'}"
+                    f"found_s={len(all_expected_science - missing_science)}"
+                    f"found_g={len(all_expected_guider - missing_guider)}"
+                    f"{'SOME MISSING' if len(missing_guider | missing_science) > 0 else 'ALL FOUND'}"
                 )
 
                 log.info(log_msg)
