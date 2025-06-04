@@ -76,7 +76,7 @@ async def main():
         }
         if constants.IS_PROD == "True":
             end_readout_listener_params["auth"] = {
-                    "security_proticol": constants.END_READOUT_SECURITY_PROTICOL,
+                    "security_protocol": constants.END_READOUT_SECURITY_PROTOCOL,
                     "sasl_mechanism": constants.END_READOUT_SASL_MECHANISM,
                     "sasl_plain_username": constants.END_READOUT_SASL_USERNAME,
                     "sasl_plain_password": constants.END_READOUT_SASL_PASSWORD,

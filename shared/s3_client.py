@@ -8,7 +8,6 @@ from typing import Dict
 from typing import Any
 
 from shared import constants
-from shared import config
 from models.expected_sensors import ExpectedSensorsModel
 
 log = logging.getLogger(__name__)
@@ -25,7 +24,7 @@ class AsyncS3Client:
         )
 
     def get_endpoint(self):
-        if config.IS_PROD == "True":
+        if constants.IS_PROD == "True":
             return constants.S3_ENDPOINT_URL
         else:
             return "http://localhost:4566"
