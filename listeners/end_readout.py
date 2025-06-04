@@ -77,6 +77,7 @@ class EndReadoutListener(BaseKafkaListener):
     def should_skip(self, msg):
         should_skip = not msg.image_source == "MC"
         if should_skip:
+            log.info(f"skipping end readout, image source is: {msg.image_source}")
             return True
         return False
 
@@ -172,11 +173,11 @@ class EndReadoutListener(BaseKafkaListener):
         log.info(f"orphan data: {len(orphan_data)}")
 
     async def handle_message(self, message):
-        log.debug("received end readout message")
+        log.info("received end readout message")
         log.debug(f"end readout message json: {message}")
         msg = EndReadoutModel.from_json(message)
-        if self.should_skip(msg):
-            return
+        # if self.should_skip(msg):
+        #     return
 
         resolved_end_readouts = (
             await self.notification_tracker.resolve_pending_end_readouts()
