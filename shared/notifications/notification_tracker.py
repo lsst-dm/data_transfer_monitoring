@@ -67,7 +67,7 @@ class NotificationTracker:
             await cls.orphans.set(jid, val)
         # Remove expired end_readouts
         end_items = await cls.pending_end_readouts.items()
-        expired = [erid for erid, (_, _, _, _, _, _, _, ts) in end_items if now - ts > cls.max_file_late_time]
+        expired = [erid for erid, (_, _, _, _, _, _, _, _, ts) in end_items if now - ts > cls.max_file_late_time]
         for erid in expired:
             val = await cls.pending_end_readouts.pop(erid)
             await cls.orphans.set(erid, val)
@@ -85,7 +85,7 @@ class NotificationTracker:
         for missing_file in missing_files:
             await self.missing_files.set(missing_file, end_readout)
 
-    async def handle_end_readout(self, end_readout_id, expected_fits_ids, expected_json_ids, msg):
+    async def handle_end_readout(self, end_readout_id, expected_fits_ids, expected_json_ids, msg, expected_sensors):
         now = time.time()
         found_fits, missing_fits, late_fits = [], [], []
         found_json, missing_json, late_json = [], [], []
@@ -141,6 +141,7 @@ class NotificationTracker:
                     set(expected_json_ids),
                     set(found_json),
                     set(late_json),
+                    expected_sensors,
                     now,
                 ),
             )
@@ -172,6 +173,7 @@ class NotificationTracker:
             expected_json,
             found_json,
             late_json,
+            expected_sensors,
             ts,
         ) in end_items:
             # Convert to sets in case they're not already (defensive)
@@ -216,44 +218,9 @@ class NotificationTracker:
                 # Update the found sets in the pending_end_readouts store
                 await self.pending_end_readouts.set(
                     erid,
-                    (msg, expected_fits, found_fits, late_fits, expected_json, found_json, late_json, ts)
+                    (msg, expected_fits, found_fits, late_fits, expected_json, found_json, late_json, expected_sensors, ts)
                 )
         return resolved
-
-    async def check_pending_end_readout_for_file_notification(self, file_id, file_type):
-        resolved_end_readouts = []
-        end_items = await self.pending_end_readouts.items()
-        for erid, (
-            expected_fits,
-            found_fits,
-            expected_json,
-            found_json,
-            ts,
-        ) in end_items:
-            if (
-                file_type == FileNotificationModel.FITS
-                and file_id in expected_fits
-                and file_id not in found_fits
-            ):
-                found_fits.add(file_id)
-                await self.fits_file_notifications.pop(file_id)
-            if (
-                file_type == FileNotificationModel.JSON
-                and file_id in expected_json
-                and file_id not in found_json
-            ):
-                found_json.add(file_id)
-                await self.json_file_notifications.pop(file_id)
-            if expected_fits == found_fits and expected_json == found_json:
-                await self.pending_end_readouts.pop(erid)
-                resolved_end_readouts.append(erid)
-        return resolved_end_readouts
-
-    async def add_file_notification_and_check_pending(
-        self, file_id, file_notification, file_type
-    ):
-        await self.add_file_notification(file_id, file_notification, file_type)
-        await self.check_pending_end_readout_for_file_notification(file_id, file_type)
 
     async def get_orphans(self):
         items = await self.orphans.items()

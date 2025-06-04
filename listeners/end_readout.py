@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from prometheus_client import Counter
 from prometheus_client import Gauge
@@ -55,34 +56,20 @@ class EndReadoutListener(BaseKafkaListener):
             "Total number of incomplete end readouts",
         )
 
-    def get_expected_file_keys(self, sensors: ExpectedSensorsModel):
-        image_source, image_controller, image_date, image_number = sensors.obs_id.split(
-            "_"
-        )
-
-        expected_json_files = [
-            f"LSSTCam/{image_date}/{sensors.obs_id}/{sensors.obs_id}_{sensor}.json"
-            for sensor in sensors.expected_sensors.keys()
-        ]
-        expected_fits_files = [
-            f"LSSTCam/{image_date}/{sensors.obs_id}/{sensors.obs_id}_{sensor}.fits"
-            for sensor in sensors.expected_sensors.keys()
-        ]
-        return expected_fits_files, expected_json_files
-
     async def process_end_readout(self, msg):
         path_prefix = msg.expected_sensors_folder_prefix
         sensors = await self.storage_client.download_and_parse_expected_sensors_file(
             prefix=path_prefix
         )
         if not sensors:
+            log.info(f"Did not find expected sensors file for path prefix: {path_prefix}")
             return [], []
-        expected_fits_files, expected_json_files = self.get_expected_file_keys(sensors)
+        expected_fits_files, expected_json_files = sensors.get_expected_file_keys()
         total_expected_sensors = len(expected_fits_files) + len(expected_json_files)
         self.total_expected_files.inc(total_expected_sensors)
 
         status = await self.notification_tracker.handle_end_readout(
-            sensors.storage_key, expected_fits_files, expected_json_files, msg
+            sensors.storage_key, expected_fits_files, expected_json_files, msg, sensors
         )
 
         return status["missing_fits"], status["missing_json"]
@@ -134,6 +121,7 @@ class EndReadoutListener(BaseKafkaListener):
                     expected_json,
                     found_json,
                     late_json,
+                    sensors,
                     _,
                 ) = data
                 missing_fits_files = expected_fits - found_fits
@@ -151,12 +139,40 @@ class EndReadoutListener(BaseKafkaListener):
                     total_missing_files, key
                 )
 
+                # come from expectedSensors.json file
+                # dayobs=20250513 seqnum=13 expect_s=197 expect_g=0 found_s=75 found_g=0 ingest_s=75 SOME MISSING
+                # s = SCIENCE, g = GUIDER
+                expected_fits_science, expected_json_science = sensors.get_expected_science_keys()
+                all_expected_science = expected_fits_science | expected_json_science
+                missing_science = set(key for key in total_missing_files if key in all_expected_science)
+
+                expected_fits_guider, expected_json_guider = sensors.get_expected_guider_keys()
+                all_expected_guider = expected_fits_guider | expected_json_guider
+                missing_guider = set(key for key in total_missing_files if key in all_expected_guider)
+
+                log_msg = (
+                    "incomplete end readout:"
+                    f"dayobs={msg.image_date}"
+                    f"seqnum={msg.private_seqNum}"
+                    f"expect_s={len(all_expected_science)}"
+                    f"expect_g={len(all_expected_guider)}"
+                    f"found_s={len(all_expected_science - missing_science)}"    
+                    f"found_g={len(all_expected_guider - missing_guider)}"    
+                    f"{'SOME MISSING' if len(total_missing_files) > 0 else 'ALL FOUND'}"
+                )
+
+                log.info(log_msg)
+
+                now = datetime.now()
+                for file in total_missing_files:
+                    log.info(f"Missing file {file} as of {now.strftime('%Y-%m-%d %H:%M:%S')} for end readout sequence number: {msg.private_seqNum}")
+
             await self.notification_tracker.pop_orphan(key)
 
-        log.info("orphan data: ", len(orphan_data))
+        log.info(f"orphan data: {len(orphan_data)}")
 
     async def handle_message(self, message):
-        log.info("received end readout message")
+        log.debug("received end readout message")
         log.debug(f"end readout message json: {message}")
         msg = EndReadoutModel.from_json(message)
         if self.should_skip(msg):
@@ -166,7 +182,7 @@ class EndReadoutListener(BaseKafkaListener):
             await self.notification_tracker.resolve_pending_end_readouts()
         )
         for readout in resolved_end_readouts:
-            _, _, _, late_fits, _, _, late_json, _ = readout
+            _, _, _, late_fits, _, _, late_json, _, _ = readout
             self.total_late_files.inc(len(late_fits) + len(late_json))
             self.total_late_fits_files.inc(len(late_fits))
             self.total_late_json_files.inc(len(late_json))

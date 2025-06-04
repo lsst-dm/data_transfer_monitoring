@@ -35,8 +35,47 @@ class ExpectedSensorsModel:
     version: float
     expected_sensors: Dict[str, str] = field(metadata=config(field_name="expectedSensors"))
 
+    SCIENCE = "SCIENCE"
+    GUIDER = "GUIDER"
+
     @property
     def storage_key(self):
         img_source, img_controller, img_date, img_num, _ = self.file_name.split("_")
         folder = "_".join([img_source, img_controller, img_date, img_num])
         return os.path.join("LSSTCam", img_date, folder, self.file_name)
+
+    def _make_keys(self, sensors, ext: str):
+        image_source, image_controller, image_date, image_number = self.obs_id.split(
+            "_"
+        )
+
+        return set(
+            f"LSSTCam/{image_date}/{self.obs_id}/{self.obs_id}_{sensor}{ext}"
+            for sensor in sensors
+        )
+
+    def get_expected_file_keys(self):
+        sensors = self.expected_sensors.keys()
+        expected_json_files = self._make_keys(sensors, ".json")
+        expected_fits_files = self._make_keys(sensors, ".fits")
+        return expected_fits_files, expected_json_files
+
+    def get_expected_science_sensors(self):
+        return set(key for key, value in self.expected_sensors.items() if value == self.SCIENCE)
+
+    def get_expected_guider_sensors(self):
+        return set(key for key, value in self.expected_sensors.items() if value == self.GUIDER)
+
+    def get_expected_science_keys(self):
+        science_sensors = self.get_expected_science_sensors()
+        expected_json_files = self._make_keys(science_sensors, ".json")
+        expected_fits_files = self._make_keys(science_sensors, ".fits")
+        return expected_fits_files, expected_json_files
+
+
+    def get_expected_guider_keys(self):
+        guider_sensors = self.get_expected_guider_sensors()
+
+        expected_json_files = self._make_keys(guider_sensors, ".json")
+        expected_fits_files = self._make_keys(guider_sensors, ".fits")
+        return expected_fits_files, expected_json_files
