@@ -7,3 +7,4 @@ KAFKA_GROUP_ID = os.environ["KAFKA_GROUP_ID"]
 
 SHOULD_RUN_END_READOUT_LISTENER = os.environ.get("SHOULD_RUN_END_READOUT_LISTENER")
 
+DEBUG_LOGS = os.environ.get("DEBUG_LOGS", "false")
