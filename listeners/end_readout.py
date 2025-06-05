@@ -17,6 +17,7 @@ class EndReadoutListener(BaseKafkaListener):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.notification_tracker = NotificationTracker()
 
         self.total_expected_files = Counter(
@@ -171,9 +172,11 @@ class EndReadoutListener(BaseKafkaListener):
 
         log.info(f"orphan data: {len(orphan_data)}")
 
-    async def handle_message(self, message):
+    async def handle_message(self, message, deserializer):
         log.info("received end readout message")
         log.debug(f"end readout message json: {message}")
+        if deserializer:
+            message = await deserializer.deserialize(data=message)
         msg = EndReadoutModel.from_json(message)
         # if self.should_skip(msg):
         #     return
