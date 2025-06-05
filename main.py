@@ -75,6 +75,7 @@ async def main():
             "group_id": constants.END_READOUT_KAFKA_GROUP_ID,
         }
         if constants.IS_PROD == "True":
+            end_readout_listener_params["schema_registry"] = constants.END_READOUT_SCHEMA_REGISTRY
             end_readout_listener_params["auth"] = {
                     "security_protocol": constants.END_READOUT_SECURITY_PROTOCOL,
                     "sasl_mechanism": constants.END_READOUT_SASL_MECHANISM,
