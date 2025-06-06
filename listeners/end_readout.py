@@ -1,4 +1,5 @@
 import logging
+import json
 from datetime import datetime
 
 from prometheus_client import Counter
@@ -177,6 +178,7 @@ class EndReadoutListener(BaseKafkaListener):
         log.debug(f"end readout message json: {message}")
         if deserializer:
             message = await deserializer.deserialize(data=message)
+            message = json.dumps(message)
         msg = EndReadoutModel.from_json(message)
         # if self.should_skip(msg):
         #     return
