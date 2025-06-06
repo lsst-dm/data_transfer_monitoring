@@ -15,25 +15,25 @@ class EndReadoutModel:
     private_revCode: str
     private_identity: str
     private_origin: int
-    additional_keys: str = field(metadata=config(field_name="additionalKeys"))
-    additional_values: str = field(metadata=config(field_name="additionalValues"))
-    images_in_sequence: int = field(metadata=config(field_name="imagesInSequence"))
-    image_name: str = field(metadata=config(field_name="imageName"))
-    image_index: int = field(metadata=config(field_name="imageIndex"))
-    image_source: str = field(metadata=config(field_name="imageSource"))
-    image_controller: str = field(metadata=config(field_name="imageController"))
-    image_date: str = field(metadata=config(field_name="imageDate"))
-    image_number: int = field(metadata=config(field_name="imageNumber"))
-    timestamp_acquisition_start: float = field(metadata=config(field_name="timestampAcquisitionStart"))
-    requested_exposure_time: float = field(metadata=config(field_name="requestedExposureTime"))
-    timestamp_end_of_readout: float = field(metadata=config(field_name="timestampEndOfReadout"))
+    additional_keys: str
+    additional_values: str
+    images_in_sequence: int
+    image_name: str
+    image_index: int
+    image_source: str
+    image_controller: str
+    image_date: str
+    image_number: int
+    timestamp_acquisition_start: float
+    requested_exposure_time: float
+    timestamp_end_of_readout: float
 
     PENDING = "pending"
     COMPLETE = "complete"
 
     @classmethod
     def from_raw_message(cls, message):
-
+        
         return EndReadoutModel(
             private_sndStamp=float(message["private_sndStamp"]),
             private_rcvStamp=float(message["private_rcvStamp"]),
