@@ -87,6 +87,7 @@ class AsyncS3Client:
         Returns None if not found.
         """
         files = await self.list_files(bucket_name, prefix)
+        log.info(f"files {files}")
         target_file = next(
             (key for key in files if constants.EXPECTED_SENSORS_FILENAME in key), None
         )
