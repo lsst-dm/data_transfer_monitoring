@@ -179,7 +179,7 @@ class EndReadoutListener(BaseKafkaListener):
             message = await deserializer.deserialize(data=message)
             log.info(type(message))
             log.info(message)
-        msg = EndReadoutModel.from_raw_message(message)
+        msg = EndReadoutModel.from_raw_message(message["message"])
         # if self.should_skip(msg):
         #     return
 
