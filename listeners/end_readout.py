@@ -175,7 +175,7 @@ class EndReadoutListener(BaseKafkaListener):
 
     async def handle_message(self, message, deserializer):
         log.info("received end readout message")
-        log.debug(f"end readout message json: {message}")
+        log.info(f"end readout message json: {message}")
         if deserializer:
             message = await deserializer.deserialize(data=message)
         msg = EndReadoutModel.from_raw_message(message)
