@@ -33,12 +33,12 @@ class EndReadoutModel:
 
     @classmethod
     def from_raw_message(cls, message):
-        
+
         return EndReadoutModel(
             private_sndStamp=float(message["private_sndStamp"]),
             private_rcvStamp=float(message["private_rcvStamp"]),
-            private_efdStamp=message["private_efdStamp="],
-            private_kafkaStamp=message["private_kafkaStamp="],
+            private_efdStamp=message["private_efdStamp"],
+            private_kafkaStamp=message["private_kafkaStamp"],
             private_seqNum=message["private_seqNum"],
             private_revCode=message["private_revCode"],
             private_identity=message["private_identity"],
