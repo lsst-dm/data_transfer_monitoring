@@ -5,8 +5,6 @@ from dataclasses_json import dataclass_json, config
 from astropy.time import Time
 import astropy.units as u
 
-
-@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class EndReadoutModel:
     private_sndStamp: float
@@ -32,6 +30,32 @@ class EndReadoutModel:
 
     PENDING = "pending"
     COMPLETE = "complete"
+
+    @classmethod
+    def from_raw_message(cls, message):
+
+        return EndReadoutModel(
+            private_sndStamp=float(message["private_sndStamp"]),
+            private_rcvStamp=float(message["private_rcvStamp"]),
+            private_efdStamp=message["private_efdStamp="],
+            private_kafkaStamp=message["private_kafkaStamp="],
+            private_seqNum=message["private_seqNum"],
+            private_revCode=message["private_revCode"],
+            private_identity=message["private_identity"],
+            private_origin=message["private_origin"],
+            additional_keys=str(message["additional_keys"]),
+            additional_values=str(message["additional_values"]),
+            images_in_sequence=int(message["imagesInSequence"]),
+            image_name=message["imageName"],
+            image_index=int(message["imageIndex"]),
+            image_source=message["imageSource"],
+            image_controller=message["imageController"],
+            image_date=str(message["imageDate"]),
+            image_number=int(message["imageNumber"]),
+            timestamp_acquisition_start=float(message["timestampAcquisitionStart"]),
+            requested_exposure_time=float(message["requestedExposureTime"]),
+            timestamp_end_of_readout=float(message["timestampEndOfReadout"])
+        )
 
     @property
     def additional_fields(self) -> Dict[str, str]:
