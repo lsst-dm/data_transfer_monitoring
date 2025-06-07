@@ -8,7 +8,6 @@ from typing import Dict
 from typing import Any
 
 from shared import constants
-from shared import config
 from models.expected_sensors import ExpectedSensorsModel
 
 log = logging.getLogger(__name__)
@@ -25,7 +24,7 @@ class AsyncS3Client:
         )
 
     def get_endpoint(self):
-        if config.IS_PROD == "True":
+        if constants.IS_PROD == "True":
             return constants.S3_ENDPOINT_URL
         else:
             return "http://localhost:4566"
@@ -88,12 +87,14 @@ class AsyncS3Client:
         Returns None if not found.
         """
         files = await self.list_files(bucket_name, prefix)
+        log.info(f"files {files}")
         target_file = next(
             (key for key in files if constants.EXPECTED_SENSORS_FILENAME in key), None
         )
         if not target_file:
             log.info(f"S3 client failed to find expected sensors file for bucket: {bucket_name}, prefix: {prefix}")
             return None
+        log.info("found expected sensors file")
 
         async with self.session.client(
             "s3", endpoint_url=self.endpoint
