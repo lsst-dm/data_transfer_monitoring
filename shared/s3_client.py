@@ -72,6 +72,7 @@ class AsyncS3Client:
         """
         files = await self.list_files(bucket_name, prefix)
         for file_key in files:
+            log.info(file_key)
             if constants.EXPECTED_SENSORS_FILENAME in file_key:
                 return True
         return False
