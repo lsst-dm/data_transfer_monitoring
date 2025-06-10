@@ -44,7 +44,7 @@ class ExpectedSensorsModel:
           file_type=file["fileType"],
           obs_id=str(file["obsId"]),
           version=float(file["version"]),
-          expected_sensors=Dict[str,str](file["expectedSensors"]),
+          expected_sensors=dict[str,str](file["expectedSensors"]),
         )
 
     @property
