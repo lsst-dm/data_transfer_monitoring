@@ -24,19 +24,28 @@ from dataclasses import dataclass, field
 from typing import Dict
 from dataclasses_json import dataclass_json, config
 
-
-@dataclass_json
 @dataclass(frozen=True, kw_only=True)
 class ExpectedSensorsModel:
     """Expected Sensors Message"""
-    file_name: str = field(metadata=config(field_name="fileName"))
-    file_type: str = field(metadata=config(field_name="fileType"))
-    obs_id: str = field(metadata=config(field_name="obsId"))
+    file_name: str
+    file_type: str
+    obs_id: str
     version: float
-    expected_sensors: Dict[str, str] = field(metadata=config(field_name="expectedSensors"))
+    expected_sensors: Dict[str, str]
 
     SCIENCE = "SCIENCE"
     GUIDER = "GUIDER"
+
+    @classmethod
+    def from_raw_file(cls, file):
+
+        return ExpectedSensorsModel(
+          file_name=file["fileName"],
+          file_type=file("fileType"),
+          obs_id=str(file["obsId"]),
+          version=float(file["version"]),
+          expected_sensors=Dict[str,str](file["expectedSensors"]),
+        )
 
     @property
     def storage_key(self):
