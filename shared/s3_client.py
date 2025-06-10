@@ -102,4 +102,6 @@ class AsyncS3Client:
         ) as s3_client:
             response = await s3_client.get_object(Bucket=bucket_name, Key=target_file)
             content = await response["Body"].read()
+            log.info(type(content))
+            log.info(content)
             return ExpectedSensorsModel.from_raw_file(content)
