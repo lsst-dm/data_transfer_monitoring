@@ -88,7 +88,6 @@ class AsyncS3Client:
         Returns None if not found.
         """
         files = await self.list_files(bucket_name, prefix)
-        log.info(f"files {files}")
         target_file = next(
             (key for key in files if constants.EXPECTED_SENSORS_FILENAME in key), None
         )
@@ -103,6 +102,4 @@ class AsyncS3Client:
             response = await s3_client.get_object(Bucket=bucket_name, Key=target_file)
             content = await response["Body"].read()
             sensors_json = json.loads(content.decode("utf-8"))
-            log.info(type(sensors_json))
-            log.info(sensors_json)
             return ExpectedSensorsModel.from_raw_file(sensors_json)
