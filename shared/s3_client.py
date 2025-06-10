@@ -102,6 +102,7 @@ class AsyncS3Client:
         ) as s3_client:
             response = await s3_client.get_object(Bucket=bucket_name, Key=target_file)
             content = await response["Body"].read()
-            log.info(type(content))
-            log.info(content)
-            return ExpectedSensorsModel.from_raw_file(content.decode("utf-8"))
+            sensors_json = json.loads(content.decode("utf-8"))
+            log.info(type(sensors_json))
+            log.info(sensors_json)
+            return ExpectedSensorsModel.from_raw_file(sensors_json)
