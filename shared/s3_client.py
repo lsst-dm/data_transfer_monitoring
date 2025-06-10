@@ -104,4 +104,4 @@ class AsyncS3Client:
             content = await response["Body"].read()
             log.info(type(content))
             log.info(content)
-            return ExpectedSensorsModel.from_raw_file(content)
+            return ExpectedSensorsModel.from_raw_file(content.decode("utf-8"))
