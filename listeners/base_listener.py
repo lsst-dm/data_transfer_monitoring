@@ -3,10 +3,11 @@ import ssl
 from abc import ABC
 from abc import abstractmethod
 
+import httpx
 from aiokafka import AIOKafkaConsumer
+from kafkit.registry import Deserializer
+from kafkit.registry.httpx import RegistryApi
 
-from shared import constants
-from shared import config
 from shared.s3_client import AsyncS3Client
 
 log = logging.getLogger(__name__)
@@ -15,16 +16,18 @@ log = logging.getLogger(__name__)
 class BaseKafkaListener(ABC):
     def __init__(
         self,
-        topic,
-        bootstrap_servers=config.KAFKA_BOOTSTRAP_SERVERS,
-        group_id=config.KAFKA_GROUP_ID,
-        use_auth=False,
+        topic=None,
+        bootstrap_servers=None,
+        schema_registry=None,
+        group_id=None,
+        auth=None,
         metric_prefix="dtm",
     ):
         self.topic = topic
         self.bootstrap_servers = bootstrap_servers
+        self.schema_registry = schema_registry
         self.group_id = group_id
-        self.use_auth = use_auth
+        self.auth = auth
         self.metric_prefix = metric_prefix
         self.consumer = None
         self.storage_client = AsyncS3Client()
@@ -40,14 +43,8 @@ class BaseKafkaListener(ABC):
         self.auth_params = self.get_auth_params()
 
     def get_auth_params(self):
-        if self.use_auth:
-            return {
-                "security_protocol": constants.SECURITY_PROTOCOL,
-                "sasl_mechanism": constants.SASL_MECHANISM,
-                "sasl_plain_username": constants.SASL_USERNAME,
-                "sasl_plain_password": constants.SASL_PASSWORD,
-                "ssl_context": self.ssl_context,
-            }
+        if self.auth:
+            return {**self.auth, "ssl_context": self.ssl_context}
         return {
             "security_protocol": "PLAINTEXT",
         }
@@ -64,13 +61,19 @@ class BaseKafkaListener(ABC):
         await self.consumer.start()
         log.info("consumer started successfully!")
         try:
-            log.info("listening to messages...")
-            async for msg in self.consumer:
-                await self.handle_message(msg.value)
+            async with httpx.AsyncClient() as client:
+                if self.schema_registry:
+                    registry_api = RegistryApi(http_client=client, url=self.schema_registry)
+                    deserializer = Deserializer(registry=registry_api)
+                else:
+                    deserializer = None
+                log.info("listening to messages...")
+                async for msg in self.consumer:
+                    await self.handle_message(msg.value, deserializer)
         finally:
             log.info("stopping consumer")
             await self.consumer.stop()
 
     @abstractmethod
-    async def handle_message(self, msg):
+    async def handle_message(self, msg, deserializer=None):
         pass

@@ -1,4 +1,5 @@
 import logging
+import json
 from datetime import datetime
 
 from prometheus_client import Counter
@@ -6,7 +7,6 @@ from prometheus_client import Gauge
 
 from listeners.base_listener import BaseKafkaListener
 from models.end_readout import EndReadoutModel
-from models.expected_sensors import ExpectedSensorsModel
 from models.file_notification import FileNotificationModel
 from shared.notifications.notification_tracker import NotificationTracker
 
@@ -18,6 +18,7 @@ class EndReadoutListener(BaseKafkaListener):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.notification_tracker = NotificationTracker()
 
         self.total_expected_files = Counter(
@@ -77,6 +78,7 @@ class EndReadoutListener(BaseKafkaListener):
     def should_skip(self, msg):
         should_skip = not msg.image_source == "MC"
         if should_skip:
+            log.info(f"skipping end readout, image source is: {msg.image_source}")
             return True
         return False
 
@@ -156,9 +158,9 @@ class EndReadoutListener(BaseKafkaListener):
                     f"seqnum={msg.private_seqNum}"
                     f"expect_s={len(all_expected_science)}"
                     f"expect_g={len(all_expected_guider)}"
-                    f"found_s={len(all_expected_science - missing_science)}"    
-                    f"found_g={len(all_expected_guider - missing_guider)}"    
-                    f"{'SOME MISSING' if len(total_missing_files) > 0 else 'ALL FOUND'}"
+                    f"found_s={len(all_expected_science - missing_science)}"
+                    f"found_g={len(all_expected_guider - missing_guider)}"
+                    f"{'SOME MISSING' if len(missing_guider | missing_science) > 0 else 'ALL FOUND'}"
                 )
 
                 log.info(log_msg)
@@ -171,12 +173,14 @@ class EndReadoutListener(BaseKafkaListener):
 
         log.info(f"orphan data: {len(orphan_data)}")
 
-    async def handle_message(self, message):
-        log.debug("received end readout message")
-        log.debug(f"end readout message json: {message}")
-        msg = EndReadoutModel.from_json(message)
-        if self.should_skip(msg):
-            return
+    async def handle_message(self, message, deserializer):
+        log.info("received end readout message")
+        if deserializer:
+            message = await deserializer.deserialize(data=message)
+            log.info(message)
+        msg = EndReadoutModel.from_raw_message(message["message"])
+        # if self.should_skip(msg):
+        #     return
 
         resolved_end_readouts = (
             await self.notification_tracker.resolve_pending_end_readouts()
