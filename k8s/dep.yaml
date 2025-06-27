@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-transfer-monitoring
+  namespace: dtm
+  labels:
+    app: data-transfer-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-transfer-monitoring
+  template:
+    metadata:
+      labels:
+        app: data-transfer-monitoring
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8000'
+    spec:
+      containers:
+        - name: data-transfer-monitoring
+          image: ghcr.io/lsst-dm/data_transfer_monitoring@sha256:52425380427006925df1d3f527ffd83c9f0af822b42a0fecce457eabd5184ef6
+          env:
+            - name: IS_PROD
+              value: "True"
+            - name: DEBUG
+              value: "true"
+            # File Notification
+            - name: FILE_NOTIFICATION_KAFKA_BOOTSTRAP_SERVERS
+              value: 172.24.5.230:9094
+            - name: FILE_NOTIFICATION_KAFKA_GROUP_ID
+              value: data-transfer-monitor-1
+            - name: FILE_NOTIFICATION_TOPIC_NAME
+              value: rubin-summit-notification
+            # End Readout
+            - name: SHOULD_RUN_END_READOUT_LISTENER
+              value: "True"
+            - name: END_READOUT_KAFKA_BOOTSTRAP_SERVERS
+              value: 172.24.10.20:9094
+              #value: sasquatch-summit-kafka-bootstrap.lsst.codes:9094
+            - name: END_READOUT_SCHEMA_REGISTRY
+              value: http://10.104.61.102:8081
+            - name: END_READOUT_TOPIC_NAME
+              value: lsst.sal.MTCamera.logevent_endReadout
+            - name: END_READOUT_KAFKA_GROUP_ID
+              value: data-transfer-monitor-1
+            - name: END_READOUT_SASL_USERNAME
+              value: data-transfer-monitoring
+            - name: END_READOUT_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: sasquatch-dtm-user-password
+            - name: END_READOUT_SASL_MECHANISM
+              value: SCRAM-SHA-512
+            - name: END_READOUT_SECURITY_PROTOCOL
+              value: SASL_SSL
+            - name: POSTGRES_CONNECTION_STRING
+              value: empty
+            - name: STORAGE_BUCKET_NAME
+              value: rubin-summit
+            - name: S3_ENDPOINT_URL
+              value: https://sdfembs3.sdf.slac.stanford.edu
+            - name: EXPECTED_SENSORS_FILENAME
+              value: expectedSensors.json
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  key: access_key
+                  name: s3-read-only
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: secret_key
+                  name: s3-read-only
