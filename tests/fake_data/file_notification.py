@@ -1,5 +1,5 @@
 from faker import Faker
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 
 from models.file_notification import (
@@ -67,7 +67,7 @@ def fake_response_elements():
     return ResponseElements(x_amz_request_id=fake.uuid4(), x_amz_id_2=fake.uuid4())
 
 def get_record_event_time():
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     start_time = now - timedelta(seconds=7)
     fake_datetime = fake.date_time_between(
         start_date=start_time,
