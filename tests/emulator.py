@@ -48,7 +48,7 @@ class Emulator(object):
         if json_body is not None:
             body = json.dumps(json_body).encode()
             content_type = "application/json"
-            log.info("uploading expected sensors file: ", key)
+            log.info(f"uploading expected sensors file: {key}")
 
         async with self.storage.session.client(
             "s3", endpoint_url=self.storage.endpoint
