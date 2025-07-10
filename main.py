@@ -60,6 +60,7 @@ async def main():
         "topic": constants.FILE_NOTIFICATION_TOPIC_NAME,
         "bootstrap_servers": constants.FILE_NOTIFICATION_KAFKA_BOOTSTRAP_SERVERS,
         "group_id": constants.FILE_NOTIFICATION_KAFKA_GROUP_ID,
+        "enable_batch_processing": True,
     }
     tasks.append(
         FileNotificationListener(
