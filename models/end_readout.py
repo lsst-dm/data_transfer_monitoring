@@ -1,9 +1,11 @@
 import os
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Optional
 from dataclasses_json import dataclass_json, config
 from astropy.time import Time
 import astropy.units as u
+from models.expected_sensors import ExpectedSensorsModel
+from shared import constants
 
 
 @dataclass_json
@@ -43,6 +45,11 @@ class EndReadoutModel:
     @property
     def expected_sensors_folder_prefix(self):
         return os.path.join("LSSTCam", self.image_date, self.image_name)
+
+    @property
+    def id(self):
+        expected_sensors_filename = f"{self.image_name}_{constants.EXPECTED_SENSORS_FILENAME}"
+        return os.path.join(self.expected_sensors_folder_prefix, expected_sensors_filename)
 
     @property
     def timestamp(self):
