@@ -73,3 +73,14 @@ class FileNotificationListener(BaseKafkaListener):
             msg.storage_key, msg, msg.file_type
         )
         self.record_metrics(msg)
+
+    async def handle_batch(self, batch, deserializer):
+        log.debug("received file notification batch")
+        log.debug(f"file notification batch: {batch}")
+        messages = [FileNotificationModel.from_json(msg) for msg in batch]
+        storage_keys = [msg.storage_key for msg in messages]
+        file_types = [msg.file_type for msg in messages]
+        await self.notification_tracker.add_file_notifications(storage_keys, messages, file_types)
+        for msg_obj in messages:
+            self.record_metrics(msg_obj)
+            # await self.handle_message(msg_obj, deserializer)
