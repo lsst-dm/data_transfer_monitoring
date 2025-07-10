@@ -22,6 +22,9 @@ class BaseKafkaListener(ABC):
         group_id=None,
         auth=None,
         metric_prefix="dtm",
+        batch_size=700,
+        batch_timeout_ms=1000,
+        enable_batch_processing=False,
     ):
         self.topic = topic
         self.bootstrap_servers = bootstrap_servers
@@ -29,6 +32,9 @@ class BaseKafkaListener(ABC):
         self.group_id = group_id
         self.auth = auth
         self.metric_prefix = metric_prefix
+        self.batch_size = batch_size
+        self.batch_timeout_ms = batch_timeout_ms
+        self.enable_batch_processing = enable_batch_processing
         self.consumer = None
         self.storage_client = AsyncS3Client()
 
@@ -55,6 +61,7 @@ class BaseKafkaListener(ABC):
             bootstrap_servers=self.bootstrap_servers,
             group_id=self.group_id,
             auto_offset_reset="latest",
+            max_poll_records=self.batch_size if self.enable_batch_processing else 500,
             **self.auth_params,
         )
         log.info("starting consumer...")
@@ -68,12 +75,34 @@ class BaseKafkaListener(ABC):
                 else:
                     deserializer = None
                 log.info("listening to messages...")
-                async for msg in self.consumer:
-                    await self.handle_message(msg.value, deserializer)
+                if self.enable_batch_processing:
+                    while True:
+                        message_batch = await self.consumer.getmany(
+                            timeout_ms=self.batch_timeout_ms,
+                            max_records=self.batch_size
+                        )
+                        if message_batch:
+                            # Convert message batch to list of message values
+                            batch_messages = []
+                            for topic_partition, messages in message_batch.items():
+                                batch_messages.extend([msg.value for msg in messages])
+
+                            if batch_messages:
+                                await self.handle_batch(batch_messages, deserializer)
+                else:
+                    async for msg in self.consumer:
+                        await self.handle_message(msg.value, deserializer)
         finally:
             log.info("stopping consumer")
             await self.consumer.stop()
 
     @abstractmethod
     async def handle_message(self, msg, deserializer=None):
+        """Handle a single message. Required when enable_batch_processing=False."""
         pass
+
+    async def handle_batch(self, messages, deserializer=None):
+        """Handle a batch of messages. Override this when enable_batch_processing=True."""
+        # Default implementation: process each message individually
+        for message in messages:
+            await self.handle_message(message, deserializer)
