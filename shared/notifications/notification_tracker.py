@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from datetime import timedelta
 import asyncio
 import logging
@@ -51,7 +51,7 @@ class NotificationTracker:
 
     @classmethod
     async def cleanup(cls):
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         async with cls._data_access_lock:
             # Move orphaned fits
             fits_items = await cls.fits_file_notifications.items()
