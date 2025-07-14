@@ -196,7 +196,7 @@ class EndReadoutListener(BaseKafkaListener):
         log.debug(f"end readout message json: {message}")
         if deserializer:
             message = await deserializer.deserialize(data=message)
-            message = message["message"]
+            message = json.dumps(message["message"])
         msg = EndReadoutModel.from_json(message)
         # if self.should_skip(msg):
         #     return
