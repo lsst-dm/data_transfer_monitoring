@@ -31,9 +31,48 @@ class EndReadoutModel:
     timestamp_acquisition_start: float = field(metadata=config(field_name="timestampAcquisitionStart"))
     requested_exposure_time: float = field(metadata=config(field_name="requestedExposureTime"))
     timestamp_end_of_readout: float = field(metadata=config(field_name="timestampEndOfReadout"))
+    # additional_keys: str
+    # additional_values: str
+    # images_in_sequence: int
+    # image_name: str
+    # image_index: int
+    # image_source: str
+    # image_controller: str
+    # image_date: str
+    # image_number: int
+    # timestamp_acquisition_start: float
+    # requested_exposure_time: float
+    # timestamp_end_of_readout: float
 
     PENDING = "pending"
     COMPLETE = "complete"
+
+    @classmethod
+    def from_raw_message(cls, message):
+
+        return EndReadoutModel(
+            private_sndStamp=float(message["private_sndStamp"]),
+            private_rcvStamp=float(message["private_rcvStamp"]),
+            private_efdStamp=message["private_efdStamp"],
+            private_kafkaStamp=message["private_kafkaStamp"],
+            private_seqNum=message["private_seqNum"],
+            private_revCode=message["private_revCode"],
+            private_identity=message["private_identity"],
+            private_origin=message["private_origin"],
+            additional_keys=str(message["additionalKeys"]),
+            additional_values=str(message["additionalValues"]),
+            images_in_sequence=int(message["imagesInSequence"]),
+            image_name=message["imageName"],
+            image_index=int(message["imageIndex"]),
+            image_source=message["imageSource"],
+            image_controller=message["imageController"],
+            image_date=str(message["imageDate"]),
+            image_number=int(message["imageNumber"]),
+            timestamp_acquisition_start=float(message["timestampAcquisitionStart"]),
+            requested_exposure_time=float(message["requestedExposureTime"]),
+            timestamp_end_of_readout=float(message["timestampEndOfReadout"])
+        )
+
 
     @property
     def additional_fields(self) -> Dict[str, str]:
