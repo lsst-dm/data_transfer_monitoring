@@ -182,8 +182,12 @@ class EndReadoutListener(BaseKafkaListener):
 
 
             await self.notification_tracker.pop_orphan(key)
-
+        image_numbers = set()
+        for orphan in orphan_data:
+            msg = orphan[1][0]
+            image_numbers.add(msg.image_number)
         log.info(f"orphan data: {len(orphan_data)}")
+        log.info(f"orphan image numbers: {image_numbers}")
 
     def record_metrics_for_resolved_end_readout(self, end_readout):
         _, _, _, late_fits, _, _, late_json, _, _ = end_readout

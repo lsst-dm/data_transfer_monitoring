@@ -1,4 +1,5 @@
 import os
+from datetime import timezone
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 from dataclasses_json import dataclass_json, config
@@ -103,4 +104,8 @@ class EndReadoutModel:
 
         # Convert to UTC and extract Python datetime
         dt_utc = t.utc.datetime
+        if dt_utc.tzinfo is None:
+            dt_utc = dt_utc.replace(tzinfo=timezone.utc)
+        if dt_utc.tzinfo != timezone.utc:
+            dt_utc = dt_utc.astimezone(timezone.utc)
         return dt_utc
