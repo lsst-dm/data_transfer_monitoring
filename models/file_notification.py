@@ -132,6 +132,10 @@ class FileNotificationModel:
         return self.filepath.split("/")[2]
 
     @property
+    def image_number(self):
+        return self.observation_id
+
+    @property
     def timestamp(self):
         """
             Returns a python utc datetime
