@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from datetime import datetime
+from datetime import timezone
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 from pathlib import Path
@@ -135,4 +136,8 @@ class FileNotificationModel:
         """
             Returns a python utc datetime
         """
-        return datetime.fromisoformat(self.records[0].event_time)
+        dt = datetime.fromisoformat(self.records[0].event_time)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        return dt
