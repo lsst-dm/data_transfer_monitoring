@@ -129,7 +129,7 @@ class FileNotificationModel:
 
     @property
     def observation_id(self):
-        return self.filepath.split("/")[2]
+        return self.filepath.parts[2]
 
     @property
     def image_number(self):
