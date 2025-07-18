@@ -1,4 +1,5 @@
 import logging
+import json
 from datetime import datetime
 
 from prometheus_client import Counter
@@ -6,7 +7,6 @@ from prometheus_client import Gauge
 
 from listeners.base_listener import BaseKafkaListener
 from models.end_readout import EndReadoutModel
-from models.expected_sensors import ExpectedSensorsModel
 from models.file_notification import FileNotificationModel
 from shared.notifications.notification_tracker import NotificationTracker
 
@@ -18,6 +18,7 @@ class EndReadoutListener(BaseKafkaListener):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.notification_tracker = NotificationTracker()
 
         self.total_expected_files = Counter(
@@ -69,7 +70,7 @@ class EndReadoutListener(BaseKafkaListener):
         self.total_expected_files.inc(total_expected_sensors)
 
         status = await self.notification_tracker.handle_end_readout(
-            sensors.storage_key, expected_fits_files, expected_json_files, msg, sensors
+            msg.id, expected_fits_files, expected_json_files, msg, sensors
         )
 
         return status["missing_fits"], status["missing_json"]
@@ -77,6 +78,7 @@ class EndReadoutListener(BaseKafkaListener):
     def should_skip(self, msg):
         should_skip = not msg.image_source == "MC"
         if should_skip:
+            log.info(f"skipping end readout, image source is: {msg.image_source}")
             return True
         return False
 
@@ -90,8 +92,14 @@ class EndReadoutListener(BaseKafkaListener):
 
         If an end readout gets put in orphans,
         it is missing one or more file notifications
+
+        the file notification may be missing,
+        the file notification may be still in the message queue,
+
         """
         orphan_data = await self.notification_tracker.get_orphans_data()
+        num_end_readout_orphans = len([data for data in orphan_data if isinstance(data[1][0], EndReadoutModel)])
+        log.info(f"Number of end readout orphans: {num_end_readout_orphans}")
         # need to loop through end readouts first and then file notifications
         sorted_orphan_data = sorted(
             orphan_data, key=lambda x: not isinstance(x[1][0], EndReadoutModel)
@@ -135,10 +143,6 @@ class EndReadoutListener(BaseKafkaListener):
                 self.total_late_files.inc(len(late_json) + len(late_fits))
                 self.total_incomplete_end_readouts.inc()
 
-                await self.notification_tracker.add_missing_files(
-                    total_missing_files, key
-                )
-
                 # come from expectedSensors.json file
                 # dayobs=20250513 seqnum=13 expect_s=197 expect_g=0 found_s=75 found_g=0 ingest_s=75 SOME MISSING
                 # s = SCIENCE, g = GUIDER
@@ -156,36 +160,62 @@ class EndReadoutListener(BaseKafkaListener):
                     f"seqnum={msg.private_seqNum}"
                     f"expect_s={len(all_expected_science)}"
                     f"expect_g={len(all_expected_guider)}"
-                    f"found_s={len(all_expected_science - missing_science)}"    
-                    f"found_g={len(all_expected_guider - missing_guider)}"    
-                    f"{'SOME MISSING' if len(total_missing_files) > 0 else 'ALL FOUND'}"
+                    f"found_s={len(all_expected_science - missing_science)}"
+                    f"found_g={len(all_expected_guider - missing_guider)}"
+                    f"{'SOME MISSING' if len(missing_guider | missing_science) > 0 else 'ALL FOUND'}"
                 )
 
-                log.info(log_msg)
+                # log.info(log_msg)
 
                 now = datetime.now()
+                missing_files_contents = await self.notification_tracker.get_missing_files()
+                num_missing = len([m for m in total_missing_files if m in missing_files_contents])
+                log.info(f"pretty sure missing this many files: {len(total_missing_files)}")
                 for file in total_missing_files:
                     log.info(f"Missing file {file} as of {now.strftime('%Y-%m-%d %H:%M:%S')} for end readout sequence number: {msg.private_seqNum}")
+                log.info(f"Total missing files actually found in the missing bucket: {num_missing}")
+                log.info(f"total actually missing: {len([m for m in total_missing_files if m not in missing_files_contents])}")
+
+                await self.notification_tracker.add_missing_files(
+                    total_missing_files, key
+                )
+
 
             await self.notification_tracker.pop_orphan(key)
-
+        image_numbers = set()
+        for orphan in orphan_data:
+            msg = orphan[1][0]
+            image_numbers.add(msg.image_number)
         log.info(f"orphan data: {len(orphan_data)}")
+        log.info(f"orphan image numbers: {image_numbers}")
 
-    async def handle_message(self, message):
-        log.debug("received end readout message")
+    def record_metrics_for_resolved_end_readout(self, end_readout):
+        _, _, _, late_fits, _, _, late_json, _, _ = end_readout
+        self.total_late_files.inc(len(late_fits) + len(late_json))
+        self.total_late_fits_files.inc(len(late_fits))
+        self.total_late_json_files.inc(len(late_json))
+
+    async def handle_message(self, message, deserializer):
+        log.info("received end readout message")
         log.debug(f"end readout message json: {message}")
-        msg = EndReadoutModel.from_json(message)
-        if self.should_skip(msg):
-            return
+        if deserializer:
+            message = await deserializer.deserialize(data=message)
+            message = message["message"]
+        else:
+            message = json.loads(message)
+        msg = EndReadoutModel.from_raw_message(message)
+        # if self.should_skip(msg):
+        #     return
 
-        resolved_end_readouts = (
+        resolved_pending_end_readouts = (
             await self.notification_tracker.resolve_pending_end_readouts()
         )
-        for readout in resolved_end_readouts:
-            _, _, _, late_fits, _, _, late_json, _, _ = readout
-            self.total_late_files.inc(len(late_fits) + len(late_json))
-            self.total_late_fits_files.inc(len(late_fits))
-            self.total_late_json_files.inc(len(late_json))
+        resolved_orphaned_end_readouts = (
+            await self.notification_tracker.try_resolve_orphaned_end_readouts()
+        )
+        total_resolved_end_readouts = resolved_pending_end_readouts + resolved_orphaned_end_readouts
+        for readout in total_resolved_end_readouts:
+            self.record_metrics_for_resolved_end_readout(readout)
 
         await self.record_metrics_for_orphans()
         await self.process_end_readout(msg)
