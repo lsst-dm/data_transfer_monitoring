@@ -11,6 +11,7 @@ MAX_LATE_FILE_TIME = int(os.environ.get("MAX_FILE_LATE_TIME", "7"))
 NOTIFICATION_CLEANUP_INTERVAL = int(os.environ.get("NOTIFICATION_CLEANUP_INTERVAL", "30"))
 
 S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")
+LOCAL_S3_ENDPOINT = os.environ.get("LOCAL_S3_ENDPOINT", "http://localhost:4566")
 
 IS_PROD = os.environ.get("IS_PROD", "False")
 

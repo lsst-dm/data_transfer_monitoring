@@ -32,7 +32,7 @@ class Emulator(object):
         self.min_late_time = min_late_time
         self.max_late_time = max_late_time
 
-        self.storage = AsyncS3Client()
+        self.storage = AsyncS3Client(endpoint="http://localhost:4566")
         self.producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
         self.data_creator = DataCreator()
 
@@ -182,6 +182,7 @@ class Emulator(object):
 
                 # Spawn a task to send late file notifications after 7 seconds
                 if late_files:
+                    log.info("sending late files")
                     asyncio.create_task(send_late_files(late_files))
 
                 await asyncio.sleep(

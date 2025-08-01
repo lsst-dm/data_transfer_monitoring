@@ -16,18 +16,20 @@ log = logging.getLogger(__name__)
 class AsyncS3Client:
     """Class for interacting with AWS S3 storage"""
 
-    def __init__(self):
-        self.endpoint = self.get_endpoint()
+    def __init__(self, endpoint=None):
+        self.endpoint = self.get_endpoint(endpoint)
         self.session = aioboto3.Session(
             aws_access_key_id=constants.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=constants.AWS_SECRET_ACCESS_KEY,
         )
 
-    def get_endpoint(self):
+    def get_endpoint(self, endpoint):
+        if endpoint:
+            return endpoint
         if constants.IS_PROD == "True":
             return constants.S3_ENDPOINT_URL
         else:
-            return "http://localhost:4566"
+            return constants.LOCAL_S3_ENDPOINT
 
     async def list_files(
         self,
@@ -101,4 +103,7 @@ class AsyncS3Client:
             response = await s3_client.get_object(Bucket=bucket_name, Key=target_file)
             content = await response["Body"].read()
             sensors_json = json.loads(content.decode("utf-8"))
-            return ExpectedSensorsModel.from_raw_file(sensors_json)
+            if constants.IS_PROD == "True":
+                return ExpectedSensorsModel.from_raw_file(sensors_json)
+            else:
+                return ExpectedSensorsModel.from_json(sensors_json)
