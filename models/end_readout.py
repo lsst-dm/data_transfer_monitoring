@@ -7,6 +7,7 @@ from astropy.time import Time
 import astropy.units as u
 from models.expected_sensors import ExpectedSensorsModel
 from shared import constants
+from shared.utils import time_conversions
 
 
 @dataclass_json
@@ -96,14 +97,9 @@ class EndReadoutModel:
         """
             Returns a python utc datetime
         """
-        # Create a Time object at the TAI epoch
-        tai_epoch = Time('1958-01-01T00:00:00', scale='tai')
-
-        # Add the seconds to the epoch
-        t = tai_epoch + self.timestamp_end_of_readout * u.s
 
         # Convert to UTC and extract Python datetime
-        dt_utc = t.utc.datetime
+        dt_utc = Time(self.timestamp_end_of_readout, format="unix_tai").utc.datetime
         if dt_utc.tzinfo is None:
             dt_utc = dt_utc.replace(tzinfo=timezone.utc)
         if dt_utc.tzinfo != timezone.utc:
