@@ -2,10 +2,12 @@ from faker import Faker
 import random
 from collections import OrderedDict
 import logging
+from datetime import datetime, timezone
 
 from tests.fake_data.end_readout import fake_end_readout
 from tests.fake_data.file_notification import fake_file_notification
 from tests.fake_data.expected_sensors import fake_expected_sensors
+from models.expected_sensors import ExpectedSensorsModel
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +23,8 @@ class DataCreator(object):
         )
         image_controller = self.fake.random_element(elements=["O", "A", "B"])
         # Generate a recent date and format as YYYYMMDD
-        date_obj = self.fake.date_between(start_date="-30d", end_date="today")
+        # date_obj = self.fake.date_time_between(start_date="-1d", end_date="now")
+        date_obj = datetime.now(timezone.utc)
         image_date = date_obj.strftime("%Y%m%d")
         # Random image number and index
         image_number = random.randint(1, 99999)
@@ -35,6 +38,7 @@ class DataCreator(object):
             "image_controller": image_controller,
             "image_date": image_date,
             "image_number": image_number,
+            "image_datetime": date_obj
         }
 
     def weighted_random_float(self):
@@ -46,10 +50,10 @@ class DataCreator(object):
         file_failure_rate = self.weighted_random_float()
         img_obj = self.random_image_object()
         expected_sensors = fake_expected_sensors(img_obj)
-        sensor_names = expected_sensors.expected_sensors.keys()
+        sensors = expected_sensors.expected_sensors.items()
 
         json_file_objects = []
-        for sensor_name in sensor_names:
+        for sensor_name, sensor_kind in sensors:
             rand_num = random.random()
             should_fail_write = rand_num < file_failure_rate
             if should_fail_write:
@@ -59,11 +63,11 @@ class DataCreator(object):
                 continue
             else:
                 json_file_objects.append(
-                    fake_file_notification(img_obj, sensor_name, ".json")
+                    fake_file_notification(img_obj, sensor_name, sensor_kind, ".json")
                 )
 
         fits_file_objects = []
-        for sensor_name in sensor_names:
+        for sensor_name, sensor_kind in sensors:
             should_fail_write = random.random() < file_failure_rate
             if should_fail_write:
                 log.info("failing to write file")
@@ -72,7 +76,7 @@ class DataCreator(object):
                 continue
             else:
                 fits_file_objects.append(
-                    fake_file_notification(img_obj, sensor_name, ".fits")
+                    fake_file_notification(img_obj, sensor_name, sensor_kind, ".fits")
                 )
 
         all_file_objects = json_file_objects + fits_file_objects
