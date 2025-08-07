@@ -25,6 +25,8 @@ services:
       END_READOUT_TOPIC_NAME: endReadoutsTopic
       END_READOUT_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       END_READOUT_KAFKA_GROUP_ID: 1
+    ports:
+      - "8000:8000"
 
     restart: unless-stopped
     depends_on:

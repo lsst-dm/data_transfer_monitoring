@@ -2,10 +2,13 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['prometheus:9090']
+      - targets: ["prometheus:9090"]
   # Add your own app's metrics endpoint here, for example:
-  - job_name: 'my-app'
+  - job_name: "local-app"
     static_configs:
-      - targets: ['host.docker.internal:8000']
+      - targets: ["host.docker.internal:8000"]
+  - job_name: "dtm"
+    static_configs:
+      - targets: ["dtm:8000"]
