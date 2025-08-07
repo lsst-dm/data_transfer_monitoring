@@ -73,7 +73,7 @@ class EndReadoutListener(BaseKafkaListener):
         )
         if not sensors:
             log.info(f"Did not find expected sensors file for path prefix: {path_prefix}")
-            return [], []
+            return
         expected_fits_files, expected_json_files = sensors.get_expected_file_keys()
         total_expected_sensors = len(expected_fits_files) + len(expected_json_files)
         self.total_expected_files.inc(total_expected_sensors)
@@ -121,8 +121,9 @@ class EndReadoutListener(BaseKafkaListener):
 
         transfer_seconds = abs(time_diff.total_seconds())
         log.info(f"transfer time: {transfer_seconds} seconds")
-        obs_day = get_observation_day(msg.timestamp)
-        self.transfer_time_histogram.labels(day=obs_day).observe(transfer_seconds)
+        day_obs = get_observation_day(msg.timestamp)
+        log.info(f"day_obs={day_obs}")
+        self.transfer_time_histogram.labels(day=day_obs).observe(transfer_seconds)
         # need to sort found files by timestamp
         # then get the time between  when the end readout was complete and the timestamp of the last found file
 
@@ -195,26 +196,32 @@ class EndReadoutListener(BaseKafkaListener):
                 # come from expectedSensors.json file
                 # dayobs=20250513 seqnum=13 expect_s=197 expect_g=0 found_s=75 found_g=0 ingest_s=75 SOME MISSING
                 # s = SCIENCE, g = GUIDER
-                # expected_fits_science, expected_json_science = sensors.get_expected_science_keys()
-                # all_expected_science = expected_fits_science | expected_json_science
-                # missing_science = set(key for key in total_missing_files if key in all_expected_science)
+                expected_fits_science, expected_json_science = sensors.get_expected_science_keys()
+                all_expected_science = expected_fits_science | expected_json_science
+                missing_science = set(key for key in total_missing_files if key in all_expected_science)
 
-                # expected_fits_guider, expected_json_guider = sensors.get_expected_guider_keys()
-                # all_expected_guider = expected_fits_guider | expected_json_guider
-                # missing_guider = set(key for key in total_missing_files if key in all_expected_guider)
+                expected_fits_guider, expected_json_guider = sensors.get_expected_guider_keys()
+                all_expected_guider = expected_fits_guider | expected_json_guider
+                missing_guider = set(key for key in total_missing_files if key in all_expected_guider)
 
-                # log_msg = (
-                #     "incomplete end readout:"
-                #     f"dayobs={msg.image_date}"
-                #     f"seqnum={msg.private_seqNum}"
-                #     f"expect_s={len(all_expected_science)}"
-                #     f"expect_g={len(all_expected_guider)}"
-                #     f"found_s={len(all_expected_science - missing_science)}"
-                #     f"found_g={len(all_expected_guider - missing_guider)}"
-                #     f"{'SOME MISSING' if len(missing_guider | missing_science) > 0 else 'ALL FOUND'}"
-                # )
+                is_incomplete = True
+                no_missing_science = len(all_expected_science) == len(all_expected_science - missing_science)
+                no_missing_guider = len(all_expected_guider) == len(all_expected_guider - missing_guider)
+                if no_missing_science and no_missing_guider:
+                    is_incomplete = False
 
-                # log.info(log_msg)
+                if is_incomplete:
+                    log_msg = (
+                        "incomplete end readout:"
+                        f"dayobs={msg.image_date}"
+                        f"seqnum={msg.private_seqNum}"
+                        f"expect_s={len(all_expected_science)}"
+                        f"expect_g={len(all_expected_guider)}"
+                        f"found_s={len(all_expected_science - missing_science)}"
+                        f"found_g={len(all_expected_guider - missing_guider)}"
+                        "SOME MISSING"
+                    )
+                    log.info(log_msg)
 
                 now = datetime.now(timezone.utc)
                 missing_files_contents = await self.notification_tracker.get_missing_files()
@@ -229,7 +236,11 @@ class EndReadoutListener(BaseKafkaListener):
                     set(total_missing_files), key
                 )
 
-                # self.record_transfer_time_metrics(data)
+                # orphans should be resolved before this point,
+                # their metrics handled by the record_metrics_for_resolved_end_readout method
+                # so pretty sure we dont need to do this
+                # if len(total_missing_files) == 0:
+                #     self.record_transfer_time_metrics(data)
 
 
             await self.notification_tracker.pop_orphan(key)
