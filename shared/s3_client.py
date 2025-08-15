@@ -95,7 +95,7 @@ class AsyncS3Client:
         if not target_file:
             log.info(f"S3 client failed to find expected sensors file for bucket: {bucket_name}, prefix: {prefix}")
             return None
-        log.info("found expected sensors file")
+        log.info(f"found {target_file} expected sensors file")
 
         async with self.session.client(
             "s3", endpoint_url=self.endpoint
