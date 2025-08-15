@@ -298,8 +298,7 @@ class EndReadoutListener(BaseKafkaListener):
         self.record_transfer_time_metrics(end_readout)
 
     async def handle_message(self, message, deserializer):
-        log.info("received end readout message")
-        log.debug(f"end readout message json: {message}")
+        log.info(f"end readout message json: {message}")
         if deserializer:
             message = await deserializer.deserialize(data=message)
             message = message["message"]
