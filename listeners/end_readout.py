@@ -26,6 +26,8 @@ class EndReadoutListener(BaseKafkaListener):
         self.current_day_obs = ""
         self._total_end_readouts_recieved = 0
         self._total_transfer_seconds = 0
+        self._total_end_readouts_resolved = 0
+        self._total_end_readouts_orphaned = 0
 
         self.notification_tracker = NotificationTracker()
 
@@ -78,6 +80,11 @@ class EndReadoutListener(BaseKafkaListener):
         self.total_end_readouts_received = Counter(
             "dtm_total_end_readouts_received",
             "Total number of end readouts received",
+            ["day"]
+        )
+        self.total_end_readouts_resolved = Counter(
+            "dtm_total_end_readouts_resolved",
+            "Total number of end readouts resolved",
             ["day"]
         )
         self.average_transfer_time = Gauge(
@@ -151,15 +158,15 @@ class EndReadoutListener(BaseKafkaListener):
         self.transfer_time_histogram.labels(day=day_obs).observe(transfer_seconds)
         self._total_transfer_seconds += transfer_seconds
         self.total_transfer_seconds.labels(day=day_obs).inc(transfer_seconds)
-        average_transfer_time = self._total_transfer_seconds / self._total_end_readouts_recieved
+        average_transfer_time = self._total_transfer_seconds / self._total_end_readouts_resolved
         self.average_transfer_time.labels(day=day_obs).set(average_transfer_time)
         log.info(f"average transfer time internal: {average_transfer_time}")
-        log.info(f"total end readouts internal: {self._total_end_readouts_recieved}")
+        log.info(f"total end readouts internal: {self._total_end_readouts_resolved}")
         log.info(f"total transfer seconds internal: {self._total_transfer_seconds}")
 
-        metric_average_transfer_time = self.total_transfer_seconds.labels(day=day_obs)._value.get() / self.total_end_readouts_received.labels(day=day_obs)._value.get()
+        metric_average_transfer_time = self.total_transfer_seconds.labels(day=day_obs)._value.get() / self.total_end_readouts_resolved.labels(day=day_obs)._value.get()
         log.info(f"average transfer time metric: {metric_average_transfer_time}")
-        log.info(f"total end readouts metric: {self.total_end_readouts_received.labels(day=day_obs)._value.get()}")
+        log.info(f"total end readouts metric: {self.total_end_readouts_resolved.labels(day=day_obs)._value.get()}")
         log.info(f"total transfer seconds metric: {self.total_transfer_seconds.labels(day=day_obs)._value.get()}")
 
         # need to sort found files by timestamp
@@ -274,6 +281,7 @@ class EndReadoutListener(BaseKafkaListener):
                 await self.notification_tracker.add_missing_files(
                     set(total_missing_files), key
                 )
+                self._total_end_readouts_orphaned += 1
 
                 # orphans should be resolved before this point,
                 # their metrics handled by the record_metrics_for_resolved_end_readout method
@@ -322,6 +330,10 @@ class EndReadoutListener(BaseKafkaListener):
         if resolved:
             total_resolved_end_readouts.append(resolved)
         log.info(f"num resolved end readouts: {len(total_resolved_end_readouts)}")
+        log.info(f"total num resolved end readouts: {self._total_end_readouts_resolved}")
+        log.info(f"total num orphaned end readouts: {self._total_end_readouts_orphaned}")
+        self._total_end_readouts_resolved += len(total_resolved_end_readouts)
+        self.total_end_readouts_resolved.labels(day=day_obs).inc(len(total_resolved_end_readouts))
         for readout in total_resolved_end_readouts:
             self.record_metrics_for_resolved_end_readout(readout)
 

@@ -47,7 +47,7 @@ class DataCreator(object):
         return (random.random() ** 2) * 0.0005
 
     def create_fake_data(self):
-        file_failure_rate = self.weighted_random_float()
+        file_failure_rate = 0#self.weighted_random_float()
         img_obj = self.random_image_object()
         expected_sensors = fake_expected_sensors(img_obj)
         sensors = expected_sensors.expected_sensors.items()
