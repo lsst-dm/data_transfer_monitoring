@@ -297,8 +297,7 @@ class EndReadoutListener(BaseKafkaListener):
         self.total_late_json_files.inc(len(late_json))
         self.record_transfer_time_metrics(end_readout)
 
-    async def handle_message(self, message, deserializer):
-        log.info(f"end readout message json: {message}")
+    async def handle_message(self, message, deserializer):   
         if deserializer:
             message = await deserializer.deserialize(data=message)
             message = message["message"]
@@ -306,6 +305,7 @@ class EndReadoutListener(BaseKafkaListener):
             message = json.loads(message)
         # msg = EndReadoutModel.from_raw_message(message)
         msg = EndReadoutModel.from_dict(message)
+        log.info(f"end readout message json: {msg}")
         # if self.should_skip(msg):
         #     return
         self._total_end_readouts_recieved += 1
