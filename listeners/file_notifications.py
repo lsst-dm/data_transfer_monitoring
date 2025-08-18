@@ -65,7 +65,7 @@ class FileNotificationListener(BaseKafkaListener):
 
     async def handle_message(self, msg_obj, deserializer):
         msg = FileNotificationModel.from_json(msg_obj)
-        log.debug(f"file notification json: {msg}")
+        log.debug(f"file notification: {msg}")
         if self.should_skip(msg):
             return
         await self.notification_tracker.add_file_notification(
