@@ -9,6 +9,7 @@ from kafkit.registry import Deserializer
 from kafkit.registry.httpx import RegistryApi
 
 from shared.s3_client import AsyncS3Client
+from shared import constants
 
 log = logging.getLogger(__name__)
 
@@ -22,8 +23,8 @@ class BaseKafkaListener(ABC):
         group_id=None,
         auth=None,
         metric_prefix="dtm",
-        batch_size=700,
-        batch_timeout_ms=1000,
+        batch_size=constants.KAFKA_BATCH_SIZE,
+        batch_timeout_ms=constants.KAFKA_BATCH_TIMEOUT_MS,
         enable_batch_processing=False,
     ):
         self.topic = topic

@@ -1,4 +1,5 @@
 import os
+from shared.utils.string_to_bool import string_to_bool
 
 POSTGRES_CONNECTION_STRING = os.environ["POSTGRES_CONNECTION_STRING"]
 AWS_ACCESS_KEY_ID = os.environ["AWS_ACCESS_KEY_ID"]
@@ -7,9 +8,9 @@ AWS_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
 EXPECTED_SENSORS_FILENAME = os.environ.get("EXPECTED_SENSORS_FILENAME", "expectedSensors.json")
 STORAGE_BUCKET_NAME = os.environ["STORAGE_BUCKET_NAME"]
 
-MAX_LATE_FILE_TIME = int(os.environ.get("MAX_FILE_LATE_TIME", "45"))
-MAX_END_READOUT_ORPHAN_TIME = int(os.environ.get("MAX_END_READOUT_ORPHAN_TIME", "120"))
-NOTIFICATION_CLEANUP_INTERVAL = int(os.environ.get("NOTIFICATION_CLEANUP_INTERVAL", "120"))
+MAX_LATE_FILE_TIME = int(os.environ.get("MAX_FILE_LATE_TIME", "180"))
+MAX_END_READOUT_ORPHAN_TIME = int(os.environ.get("MAX_END_READOUT_ORPHAN_TIME", "180"))
+NOTIFICATION_CLEANUP_INTERVAL = int(os.environ.get("NOTIFICATION_CLEANUP_INTERVAL", "180"))
 
 S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")
 LOCAL_S3_ENDPOINT = os.environ.get("LOCAL_S3_ENDPOINT", "http://localhost:4566")
@@ -17,6 +18,11 @@ LOCAL_S3_ENDPOINT = os.environ.get("LOCAL_S3_ENDPOINT", "http://localhost:4566")
 IS_PROD = os.environ.get("IS_PROD", "False")
 
 DEBUG_LOGS = os.environ.get("DEBUG_LOGS", "false")
+
+# Base Kafka
+KAFKA_BATCH_SIZE = int(os.environ.get("KAFKA_BATCH_SIZE", "700"))
+KAFKA_BATCH_TIMEOUT_MS = int(os.environ.get("KAFKA_BATCH_TIMEOUT_MS", "1000"))
+KAFKA_BATCH_PROCESS_FILE_NOTIFICATIONS = string_to_bool(os.environ.get("KAFKA_BATCH_PROCESS_FILE_NOTIFICATIONS", "false"))
 
 # File Notifications
 FILE_NOTIFICATION_TOPIC_NAME = os.environ["FILE_NOTIFICATION_TOPIC_NAME"]

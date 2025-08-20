@@ -144,7 +144,7 @@ class EndReadoutListener(BaseKafkaListener):
         last_file_to_arrive = sorted_by_time[-1][0].timestamp
         log.info(f"last file to arrive: {last_file_to_arrive}")
         log.info(f"msg timestamp: {msg.timestamp}")
-        time_diff = msg.timestamp - last_file_to_arrive
+        time_diff = last_file_to_arrive - msg.timestamp
 
         transfer_seconds = abs(time_diff.total_seconds())
         log.info(f"transfer time: {transfer_seconds} seconds")
@@ -164,10 +164,12 @@ class EndReadoutListener(BaseKafkaListener):
         log.info(f"total end readouts internal: {self._total_end_readouts_resolved}")
         log.info(f"total transfer seconds internal: {self._total_transfer_seconds}")
 
-        metric_average_transfer_time = self.total_transfer_seconds.labels(day=day_obs)._value.get() / self.total_end_readouts_resolved.labels(day=day_obs)._value.get()
-        log.info(f"average transfer time metric: {metric_average_transfer_time}")
-        log.info(f"total end readouts metric: {self.total_end_readouts_resolved.labels(day=day_obs)._value.get()}")
-        log.info(f"total transfer seconds metric: {self.total_transfer_seconds.labels(day=day_obs)._value.get()}")
+        num_end_readouts_resolved = self.total_end_readouts_resolved.labels(day=day_obs)._value.get()
+        if num_end_readouts_resolved > 0:
+            metric_average_transfer_time = self.total_transfer_seconds.labels(day=day_obs)._value.get() / num_end_readouts_resolved
+            log.info(f"average transfer time metric: {metric_average_transfer_time}")
+            log.info(f"total end readouts metric: {num_end_readouts_resolved}")
+            log.info(f"total transfer seconds metric: {num_end_readouts_resolved}")
 
         # need to sort found files by timestamp
         # then get the time between  when the end readout was complete and the timestamp of the last found file
@@ -305,7 +307,25 @@ class EndReadoutListener(BaseKafkaListener):
         self.total_late_json_files.inc(len(late_json))
         self.record_transfer_time_metrics(end_readout)
 
-    async def handle_message(self, message, deserializer):   
+    async def determine_missing_files_in_s3(self, end_readout):
+        path_prefix = end_readout.expected_sensors_folder_prefix
+        existing_files = await self.storage_client.list_files(prefix=path_prefix)
+        sensors = await self.storage_client.download_and_parse_expected_sensors_file(
+            prefix=path_prefix
+        )
+        if not sensors:
+            log.info(f"Did not find expected sensors file for path prefix: {path_prefix}")
+            return
+        expected_fits_files, expected_json_files = sensors.get_expected_file_keys()
+        all_expected_files = expected_json_files | expected_fits_files
+        missing_files = [f for f in all_expected_files if f not in existing_files]
+        # log.info(f"first expected file: {list(all_expected_files)[0]}")
+        # log.info(f"first missing file: {missing_files[0]}")
+        if missing_files:
+            now = datetime.now(timezone.utc)
+            log.info(f"for end readout sequence number: {end_readout.private_seqNum} as of {now.strftime('%Y-%m-%d %H:%M:%S')} s3 late files: {missing_files}")
+
+    async def handle_message(self, message, deserializer):
         if deserializer:
             message = await deserializer.deserialize(data=message)
             message = message["message"]
@@ -316,6 +336,7 @@ class EndReadoutListener(BaseKafkaListener):
         log.info(f"end readout message json: {msg}")
         # if self.should_skip(msg):
         #     return
+        await self.determine_missing_files_in_s3(msg)
         self._total_end_readouts_recieved += 1
         day_obs = get_observation_day()
         self.total_end_readouts_received.labels(day=day_obs).inc()
