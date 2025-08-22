@@ -92,6 +92,11 @@ class EndReadoutListener(BaseKafkaListener):
             "Average Transfer Time in Seconds",
             ["day"]
         )
+        self.s3_late_or_missing = Counter(
+            "dtm_s3_late_or_missing",
+            "Number of files late or missing according to s3",
+            ["day"]
+        )
 
     async def process_end_readout(self, msg):
         path_prefix = msg.expected_sensors_folder_prefix
@@ -322,8 +327,10 @@ class EndReadoutListener(BaseKafkaListener):
         # log.info(f"first expected file: {list(all_expected_files)[0]}")
         # log.info(f"first missing file: {missing_files[0]}")
         if missing_files:
+            day_obs = get_observation_day()
             now = datetime.now(timezone.utc)
             log.info(f"for end readout sequence number: {end_readout.private_seqNum} as of {now.strftime('%Y-%m-%d %H:%M:%S')} s3 late files: {missing_files}")
+            self.s3_late_or_missing.labels(day=day_obs).inc(len(missing_files))
 
     async def handle_message(self, message, deserializer):
         if deserializer:

@@ -7,6 +7,7 @@ from prometheus_client import Counter
 from listeners.base_listener import BaseKafkaListener
 from models.file_notification import FileNotificationModel
 from shared.notifications.notification_tracker import NotificationTracker
+from shared.utils.day_of_observation import get_observation_day
 
 log = logging.getLogger(__name__)
 
@@ -19,19 +20,24 @@ class FileNotificationListener(BaseKafkaListener):
         self.notification_tracker = NotificationTracker()
         self.time_of_last_message = self.get_initial_time_of_last_message()
         self.total_messages_received = Counter(
-            "dtm_file_messages_received_total", "Total number of file messages received"
+            "dtm_file_messages_received_total",
+            "Total number of file messages received",
+            ["day"]
         )
         self.fits_files_received = Counter(
             "dtm_file_messages_received_fits_total",
             "Total number of .fits file messages received",
+            ["day"]
         )
         self.json_files_received = Counter(
             "dtm_file_messages_received_header_total",
             "Total number of .json header file messages received",
+            ["day"]
         )
         self.file_message_histogram = Histogram(
             "dtm_file_messages_received_seconds",
             "Histogram of file message receive intervals (Seconds)",
+            ["day"],
             buckets=[1, 2, 4, 8, 16],
         )
 
@@ -47,19 +53,21 @@ class FileNotificationListener(BaseKafkaListener):
 
     def record_histogram(self, now: datetime):
         time_since_last_message = now - self.time_of_last_message
-        self.file_message_histogram.observe(time_since_last_message.total_seconds())
+        day_obs = get_observation_day()
+        self.file_message_histogram.labels(day=day_obs).observe(time_since_last_message.total_seconds())
 
     def record_metrics(self, msg: FileNotificationModel):
         now = datetime.now()
+        day_obs = get_observation_day()
 
         if msg.file_type == FileNotificationModel.JSON:
-            self.json_files_received.inc()
+            self.json_files_received.labels(day=day_obs).inc()
 
         if msg.file_type == FileNotificationModel.FITS:
-            self.fits_files_received.inc()
+            self.fits_files_received.labels(day=day_obs).inc()
 
         self.record_histogram(now)
-        self.total_messages_received.inc()
+        self.total_messages_received.labels(day=day_obs).inc()
 
         self.time_of_last_message = now
 
