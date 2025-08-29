@@ -1,6 +1,7 @@
 import logging
 import json
 import asyncio
+import time
 from datetime import datetime
 from datetime import timezone
 
@@ -13,6 +14,7 @@ from models.end_readout import EndReadoutModel
 from models.file_notification import FileNotificationModel
 from shared.notifications.notification_tracker import NotificationTracker
 from shared.utils.day_of_observation import get_observation_day
+from shared import constants
 
 log = logging.getLogger(__name__)
 
@@ -313,6 +315,7 @@ class EndReadoutListener(BaseKafkaListener):
         self.record_transfer_time_metrics(end_readout)
 
     async def determine_missing_files_in_s3(self, end_readout):
+        time.sleep(constants.MAX_LATE_FILE_TIME)
         path_prefix = end_readout.expected_sensors_folder_prefix
         existing_files = await self.storage_client.list_files(prefix=path_prefix)
         sensors = await self.storage_client.download_and_parse_expected_sensors_file(
