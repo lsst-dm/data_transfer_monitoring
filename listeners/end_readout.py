@@ -105,6 +105,11 @@ class EndReadoutListener(BaseKafkaListener):
             "Number of files late or missing according to s3",
             ["day"]
         )
+        self.s3_late_files = Counter(
+            "dtm_s3_late_files",
+            "Number of files in S3 that exceeded the late threshold",
+            ["day"]
+        )
 
     async def process_end_readout(self, msg):
         path_prefix = msg.expected_sensors_folder_prefix
@@ -355,6 +360,27 @@ class EndReadoutListener(BaseKafkaListener):
         if not timestamps_dict:
             log.warning(f"No S3 items found for prefix: {msg.expected_sensors_folder_prefix}")
             return
+
+        # Find files that are late based on MAX_FILE_LATE_TIME threshold
+        late_files = []
+        for file_key, file_timestamp in timestamps_dict.items():
+            time_diff = file_timestamp - msg.timestamp
+            if abs(time_diff.total_seconds()) > constants.MAX_LATE_FILE_TIME:
+                late_files.append({
+                    'key': file_key,
+                    'timestamp': file_timestamp,
+                    'delay_seconds': abs(time_diff.total_seconds())
+                })
+
+        # Log information about late files and record metrics
+        if late_files:
+            log.info(f"Found {len(late_files)} late files for {msg.image_number} (threshold: {constants.MAX_FILE_LATE_TIME}s)")
+            for late_file in late_files:
+                log.info(f"  Late file: {late_file['key']} - delay: {late_file['delay_seconds']:.2f}s")
+
+            # Record the late files metric
+            day_obs = get_observation_day(msg.timestamp)
+            self.s3_late_files.labels(day=day_obs).inc(len(late_files))
 
         # Extract just the datetime values and sort from newest to oldest
         timestamps = list(timestamps_dict.values())
