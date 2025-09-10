@@ -19,19 +19,17 @@ def fake_tai_time(img_datetime):
     random_seconds = random.uniform(0, 5)
     fake_utc = start_time_utc + timedelta(seconds=random_seconds)
 
+    # Convert to TAI time
     tai_time = Time(fake_utc).tai
-    # Convert to TAI by adding fixed offset (37 seconds as of 2025)
-    # tai_offset = timedelta(seconds=37)
-    # log.info(f"fake tai time: {fake_utc + tai_offset}")
-    # Assume t_tai is your Astropy Time object in TAI scale
-    tai_epoch = Time('1958-01-01T00:00:00', scale='tai')
 
-    # Calculate seconds since TAI epoch as a float
-    seconds_since_epoch = (tai_time - tai_epoch).to(u.s).value
+    # Unix epoch in TAI scale (1970-01-01 00:00:00 TAI)
+    unix_epoch_tai = Time('1970-01-01T00:00:00', scale='tai')
 
-    # Format in scientific notation (e.g., with default or customized precision)
-    sci_notation_str = f"{seconds_since_epoch:.15E}"  # 15 decimal places
-    return float(sci_notation_str)
+    # Calculate Unix TAI time (seconds since 1970-01-01 00:00:00 TAI)
+    # This is different from regular Unix time which is UTC-based
+    unix_tai_seconds = (tai_time - unix_epoch_tai).to(u.s).value
+
+    return unix_tai_seconds
 
 def fake_end_readout(img_obj) -> EndReadoutModel:
     img_datetime = img_obj.pop("image_datetime")
