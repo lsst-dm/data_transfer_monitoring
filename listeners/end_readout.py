@@ -74,6 +74,12 @@ class EndReadoutListener(BaseKafkaListener):
             ["day"],  # add day as a label
             buckets=(0.5, 1, 2.5, 5, 10, 30, 60)
         )
+        self.s3_transfer_time_histogram = Histogram(
+            "dtm_s3_transfer_duration_seconds",
+            "S3 transfer duration in seconds (from EndReadout timestamp to oldest S3 file)",
+            ["day"],  # add day as a label
+            buckets=(0.5, 1, 2.5, 5, 10, 30, 60, 120, 300)
+        )
         self.total_transfer_seconds = Counter(
             "dtm_total_transfer_seconds",
             "Total seconds for all end readouts",
@@ -315,7 +321,7 @@ class EndReadoutListener(BaseKafkaListener):
         self.record_transfer_time_metrics(end_readout)
 
     async def determine_missing_files_in_s3(self, end_readout):
-        time.sleep(constants.MAX_LATE_FILE_TIME)
+        # time.sleep(constants.MAX_LATE_FILE_TIME)
         path_prefix = end_readout.expected_sensors_folder_prefix
         existing_files = await self.storage_client.list_files(prefix=path_prefix)
         sensors = await self.storage_client.download_and_parse_expected_sensors_file(
@@ -335,6 +341,46 @@ class EndReadoutListener(BaseKafkaListener):
             log.info(f"for end readout sequence number: {end_readout.private_seqNum} as of {now.strftime('%Y-%m-%d %H:%M:%S')} s3 late files: {missing_files}")
             self.s3_late_or_missing.labels(day=day_obs).inc(len(missing_files))
 
+    async def record_metrics_from_s3(self, msg):
+        """
+        Records S3 transfer time metrics by comparing EndReadout timestamp
+        with the oldest file timestamp in S3.
+        """
+        # try:
+            # Get timestamps from S3 items using the storage prefix
+        timestamps_dict = await self.storage_client.get_item_timestamps(
+            prefix=msg.expected_sensors_folder_prefix
+        )
+
+        if not timestamps_dict:
+            log.warning(f"No S3 items found for prefix: {msg.expected_sensors_folder_prefix}")
+            return
+
+        # Extract just the datetime values and sort from newest to oldest
+        timestamps = list(timestamps_dict.values())
+        timestamps_sorted = sorted(timestamps, reverse=True)
+
+        # Get the oldest timestamp (last in the sorted list)
+        oldest_timestamp = timestamps_sorted[-1]
+
+        # Calculate the time difference
+        # This represents how long it took from EndReadout to the oldest S3 file
+        time_diff = oldest_timestamp - msg.timestamp
+        transfer_seconds = abs(time_diff.total_seconds())
+
+        # Get the observation day for labeling
+        day_obs = get_observation_day(msg.timestamp)
+
+        # Record the metric
+        self.s3_transfer_time_histogram.labels(day=day_obs).observe(transfer_seconds)
+
+        log.info(f"S3 transfer time for {msg.image_number}: {transfer_seconds:.2f} seconds")
+        log.info(f"EndReadout timestamp: {msg.timestamp}")
+        log.info(f"Oldest S3 file timestamp: {oldest_timestamp}")
+
+        # except Exception as e:
+            # log.info(f"Error recording S3 metrics for {msg.image_number}: {e}")
+
     async def handle_message(self, message, deserializer):
         if deserializer:
             message = await deserializer.deserialize(data=message)
@@ -347,6 +393,7 @@ class EndReadoutListener(BaseKafkaListener):
         # if self.should_skip(msg):
         #     return
         await self.determine_missing_files_in_s3(msg)
+        await self.record_metrics_from_s3(msg)
         self._total_end_readouts_recieved += 1
         day_obs = get_observation_day()
         self.total_end_readouts_received.labels(day=day_obs).inc()
