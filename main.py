@@ -7,6 +7,7 @@ from shared import constants
 from listeners.file_notifications import FileNotificationListener
 from listeners.end_readout import EndReadoutListener
 from shared.notifications.notification_tracker import NotificationTracker
+from shared.s3_metrics_processor import S3MetricsProcessor
 
 # file notification with expected sensors name in it
 # expected sensors lives in s3 bucket
@@ -53,6 +54,11 @@ async def main():
 
     # start prometheus
     start_http_server(8000)
+
+    # Initialize and start the TaskProcessor for S3 metrics (singleton)
+    log.info("starting S3 metrics task processor...")
+    s3_processor = S3MetricsProcessor.get_instance()
+    tasks.append(s3_processor.start())
 
     # start our kafka listeners
     log.info("starting file notification listener...")

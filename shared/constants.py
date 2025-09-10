@@ -8,12 +8,13 @@ AWS_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
 EXPECTED_SENSORS_FILENAME = os.environ.get("EXPECTED_SENSORS_FILENAME", "expectedSensors.json")
 STORAGE_BUCKET_NAME = os.environ["STORAGE_BUCKET_NAME"]
 
-MAX_LATE_FILE_TIME = int(os.environ.get("MAX_FILE_LATE_TIME", "180"))
+MAX_LATE_FILE_TIME = int(os.environ.get("MAX_FILE_LATE_TIME", "30"))
 MAX_END_READOUT_ORPHAN_TIME = int(os.environ.get("MAX_END_READOUT_ORPHAN_TIME", "180"))
 NOTIFICATION_CLEANUP_INTERVAL = int(os.environ.get("NOTIFICATION_CLEANUP_INTERVAL", "180"))
 
 S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")
 LOCAL_S3_ENDPOINT = os.environ.get("LOCAL_S3_ENDPOINT", "http://localhost:4566")
+S3_WAIT_TIME = int(os.environ.get("S3_WAIT_TIME", f"{MAX_LATE_FILE_TIME}"))
 
 IS_PROD = os.environ.get("IS_PROD", "False")
 

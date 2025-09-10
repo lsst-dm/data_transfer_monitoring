@@ -172,11 +172,18 @@ services:
       - "127.0.0.1:4510-4559:4510-4559" # External services port range
     environment:
       - DEBUG=${DEBUG:-0}
+      - PERSISTENCE=1
+      - LS_LOG=warning # Reduce LocalStack logging to warnings only
       # Add more LocalStack config as needed, e.g.:
       - SERVICES=s3,sqs
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=us-east-1
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 10s

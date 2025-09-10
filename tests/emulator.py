@@ -32,6 +32,8 @@ class Emulator(object):
         self.min_late_time = min_late_time
         self.max_late_time = max_late_time
 
+        self.total_expected_sensors_uploaded = 0
+
         self.storage = AsyncS3Client(endpoint="http://localhost:4566")
         self.producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
         self.data_creator = DataCreator()
@@ -43,12 +45,11 @@ class Emulator(object):
         Uploads an empty file or a JSON body to the specified S3 key.
         If json_body is provided, uploads it as JSON; otherwise, uploads an empty file.
         """
-        body = b""
+        body = b"x"  # LocalStack has issues with empty files, need at least 1 byte
         content_type = "application/octet-stream"
         if json_body is not None:
             body = json.dumps(json_body).encode()
             content_type = "application/json"
-            log.info(f"uploading expected sensors file: {key}")
 
         async with self.storage.session.client(
             "s3", endpoint_url=self.storage.endpoint
@@ -148,9 +149,24 @@ class Emulator(object):
         async def send_late_files(late_files):
             # Wait up to 7 seconds before sending late file notifications
             await asyncio.sleep(random.randint(self.min_late_time, self.max_late_time))
+
+            # Upload all late files in parallel first
+            upload_tasks = []
+            for file_obj in late_files:
+                key = file_obj.records[0].s3.object.key
+                upload_tasks.append(self.upload_file(key))
+            if upload_tasks:
+                await asyncio.gather(*upload_tasks)
+
+            # Then send notifications for all late files
+            notification_tasks = []
             for file_obj in late_files:
                 msg = file_obj.to_json().encode()
-                await self.producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
+                notification_tasks.append(
+                    self.producer.send_and_wait(constants.FILE_NOTIFICATION_TOPIC_NAME, msg)
+                )
+            if notification_tasks:
+                await asyncio.gather(*notification_tasks)
 
         try:
             while True:
@@ -163,6 +179,16 @@ class Emulator(object):
                 await self.upload_file(
                     expected_sensors.storage_key, json_body=expected_sensors.to_json()
                 )
+                self.total_expected_sensors_uploaded += 1
+                log.info(f"total expected sensors uploaded: {self.total_expected_sensors_uploaded}")
+
+                # Upload all on-time files in parallel
+                upload_tasks = []
+                for file_obj in files_to_send:
+                    key = file_obj.records[0].s3.object.key
+                    upload_tasks.append(self.upload_file(key))
+                if upload_tasks:
+                    await asyncio.gather(*upload_tasks)
 
                 # Prepare on-time file notifications and end readout
                 notifications = []
