@@ -2,6 +2,7 @@ import logging
 import json
 import aioboto3
 from botocore.exceptions import ClientError
+from datetime import datetime
 from typing import List
 from typing import Optional
 from typing import Dict
@@ -9,6 +10,7 @@ from typing import Any
 
 from shared import constants
 from models.expected_sensors import ExpectedSensorsModel
+from models.file_notification import FileNotificationModel
 
 log = logging.getLogger(__name__)
 
@@ -107,3 +109,73 @@ class AsyncS3Client:
                 return ExpectedSensorsModel.from_raw_file(sensors_json)
             else:
                 return ExpectedSensorsModel.from_json(sensors_json)
+
+    async def get_item_timestamps(
+        self,
+        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+        prefix: Optional[str] = "",
+    ) -> Dict[str, datetime]:
+        """
+        Get timestamps for all items in the bucket that don't end with '_expectedSensors'.
+        Returns a dictionary mapping file keys to their last modified datetime objects in UTC.
+        """
+        timestamps = {}
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint
+        ) as s3_client:
+            paginator = s3_client.get_paginator("list_objects_v2")
+            async for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    # Filter out files ending with '_expectedSensors'
+                    if not key.endswith("_expectedSensors"):
+                        # Store timestamp as datetime object (already in UTC from S3)
+                        timestamps[key] = obj["LastModified"]
+        return timestamps
+
+    async def get_file_content_timestamps(
+        self,
+        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+        prefix: Optional[str] = "",
+    ) -> Dict[str, datetime]:
+        """
+        Get timestamps from the actual JSON file contents for files that don't end with '_expectedSensors'.
+        Uses FileNotificationModel to parse files and extract timestamps.
+        Returns a dictionary mapping file keys to datetime objects in UTC.
+        """
+        content_timestamps = {}
+
+        # First, get list of files to process
+        files_to_process = []
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint
+        ) as s3_client:
+            paginator = s3_client.get_paginator("list_objects_v2")
+            async for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    # Filter out files ending with '_expectedSensors' and only process JSON files
+                    if not key.endswith("_expectedSensors") and key.endswith(".json"):
+                        files_to_process.append(key)
+
+        # Now download and parse each file to extract timestamps
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint
+        ) as s3_client:
+            for file_key in files_to_process:
+                try:
+                    response = await s3_client.get_object(Bucket=bucket_name, Key=file_key)
+                    content = await response["Body"].read()
+                    data_str = content.decode("utf-8")
+
+                    # Use FileNotificationModel to parse and extract timestamp
+                    notification = FileNotificationModel.from_json(data_str)
+
+                    # Use the model's timestamp property which already handles the first record
+                    content_timestamps[file_key] = notification.timestamp
+
+                except (json.JSONDecodeError, ClientError, Exception) as e:
+                    log.warning(f"Failed to parse timestamps from {file_key}: {e}")
+                    continue
+
+        return content_timestamps
