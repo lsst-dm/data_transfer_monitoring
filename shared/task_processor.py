@@ -6,7 +6,7 @@ import traceback
 log = logging.getLogger(__name__)
 
 
-class S3MetricsProcessor:
+class TaskProcessor:
     """
     Simple singleton task processor with a queue and worker pool.
     """
@@ -35,7 +35,7 @@ class S3MetricsProcessor:
         self.total_processed = 0
         self.total_failed = 0
 
-        log.info("S3MetricsProcessor initialized")
+        log.info("TaskProcessor initialized")
 
     async def add_task(self, coro: Coroutine[Any, Any, Any]) -> None:
         """Add a coroutine to the queue."""
@@ -83,11 +83,11 @@ class S3MetricsProcessor:
     async def start(self) -> None:
         """Start the processor with worker pool."""
         if self.running:
-            log.warning("S3MetricsProcessor already running")
+            log.warning("TaskProcessor already running")
             return
 
         self.running = True
-        log.info(f"Starting S3MetricsProcessor with {self.max_workers} workers")
+        log.info(f"Starting TaskProcessor with {self.max_workers} workers")
 
         # Create workers
         for i in range(self.max_workers):
@@ -100,7 +100,7 @@ class S3MetricsProcessor:
                 await asyncio.sleep(1)
 
                 # Log status every 30 seconds
-                if int(asyncio.get_event_loop().time()) % 5 == 0:
+                if int(asyncio.get_event_loop().time()) % 30 == 0:
                     log.info(
                         f"Status - Queue: {self.queue.qsize()}, "
                         f"Processed: {self.total_processed}, "
@@ -116,7 +116,7 @@ class S3MetricsProcessor:
         if not self.running:
             return
 
-        log.info("Stopping S3MetricsProcessor...")
+        log.info("Stopping TaskProcessor...")
         self.running = False
 
         # Wait for workers to finish
@@ -124,10 +124,10 @@ class S3MetricsProcessor:
             await asyncio.gather(*self.workers, return_exceptions=True)
             self.workers.clear()
 
-        log.info(f"S3MetricsProcessor stopped. Processed: {self.total_processed}, Failed: {self.total_failed}")
+        log.info(f"TaskProcessor stopped. Processed: {self.total_processed}, Failed: {self.total_failed}")
 
     @classmethod
-    def get_instance(cls, **kwargs) -> "S3MetricsProcessor":
+    def get_instance(cls, **kwargs) -> "TaskProcessor":
         """Get the singleton instance."""
         if cls._instance is None:
             cls._instance = cls()
