@@ -72,7 +72,7 @@ class S3Metrics:
             day_obs = get_observation_day()
             now = datetime.now(timezone.utc)
             log.info(
-                f"for end readout sequence number: {end_readout.private_seqNum} "
+                f"For Sequence: {end_readout.image_name} "
                 f"as of {now.strftime('%Y-%m-%d %H:%M:%S')} "
                 f"s3 late files: {missing_files}"
             )
@@ -169,9 +169,12 @@ class S3Metrics:
         # Get the observation day for labeling
         day_obs = get_observation_day(msg.timestamp)
 
-        # Record the metric
-        self.s3_transfer_time_histogram.labels(day=day_obs).observe(transfer_seconds)
+        # Limit recording of metrics to positive transfers
+        # TODO add handling for minimum number of files in a sequence
+        if transfer_seconds > 0:
+            # Record the metric
+            self.s3_transfer_time_histogram.labels(day=day_obs).observe(transfer_seconds)
 
-        log.info(f"{msg.image_name} S3 transfer time: {transfer_seconds:.2f} seconds")
-        log.info(f"EndReadout timestamp: {msg.timestamp}")
+        log.info(f"{msg.image_name} Summit to USDF transfer time: {transfer_seconds:.2f} seconds")
+        log.info(f"{msg.image_name} end readout timestamp: {msg.timestamp}")
         log.info(f"{msg.image_name} newest S3 file timestamp: {newest_timestamp}")

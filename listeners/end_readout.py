@@ -72,9 +72,8 @@ class EndReadoutListener(BaseKafkaListener):
             message = message["message"]
         else:
             message = json.loads(message)
-        # msg = EndReadoutModel.from_raw_message(message)
         msg = EndReadoutModel.from_dict(message)
-        log.info(f"end readout message json: {msg}")
+        log.info(f"end readout message: {msg}")
         # if self.should_skip(msg):
         #     return
         await self.task_processor.add_task(
