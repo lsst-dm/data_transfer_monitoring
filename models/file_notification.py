@@ -137,11 +137,4 @@ class FileNotificationModel:
 
     @property
     def timestamp(self):
-        """
-            Returns a python utc datetime
-        """
-        dt = datetime.fromisoformat(self.records[0].event_time)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-
-        return dt
+        return self.records[0].event_time

@@ -6,7 +6,6 @@ from prometheus_client import start_http_server
 from shared import constants
 from listeners.file_notifications import FileNotificationListener
 from listeners.end_readout import EndReadoutListener
-from shared.notifications.notification_tracker import NotificationTracker
 from shared.task_processor import TaskProcessor
 
 # file notification with expected sensors name in it
@@ -18,7 +17,7 @@ from shared.task_processor import TaskProcessor
 # counter for .json file
 # counter for end run kafka message
 # if files are missing then generate a log message
-# coutner for missing files over time
+# counter for missing files over time
 #
 # add histogram summary over sliding time window
 # add summary of files processed during the window: prometheus Summary
@@ -94,12 +93,6 @@ async def main():
                 **end_readout_listener_params
             ).start()
         )
-
-    log.info("starting notification tracker periodic cleanup task...")
-    await NotificationTracker.start_periodic_cleanup(
-        interval_seconds=constants.NOTIFICATION_CLEANUP_INTERVAL
-    )
-    log.info("started periodic cleanup successfully")
 
     await asyncio.gather(*tasks)
 

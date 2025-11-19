@@ -7,7 +7,6 @@ from prometheus_client import Counter, Gauge, Histogram
 
 from models.end_readout import EndReadoutModel
 from models.file_notification import FileNotificationModel
-from shared.notifications.notification_tracker import NotificationTracker
 from shared.utils.day_of_observation import get_observation_day
 from shared import constants
 
@@ -24,9 +23,6 @@ class KafkaMetrics:
         self._total_transfer_seconds = 0
         self._total_end_readouts_resolved = 0
         self._total_end_readouts_orphaned = 0
-
-        # Initialize the notification tracker
-        self.notification_tracker = NotificationTracker()
 
         # Initialize all Prometheus metrics
         self._initialize_metrics()
