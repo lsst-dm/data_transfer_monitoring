@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from datetime import datetime
+from datetime import timezone
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 from pathlib import Path
@@ -128,11 +129,12 @@ class FileNotificationModel:
 
     @property
     def observation_id(self):
-        return self.filepath.split("/")[2]
+        return self.filepath.parts[2]
+
+    @property
+    def image_number(self):
+        return self.observation_id
 
     @property
     def timestamp(self):
-        """
-            Returns a python utc datetime
-        """
-        return datetime.fromisoformat(self.records[0].event_time)
+        return self.records[0].event_time

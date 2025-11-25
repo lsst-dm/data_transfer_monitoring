@@ -2,14 +2,15 @@ import logging
 import json
 import aioboto3
 from botocore.exceptions import ClientError
+from datetime import datetime
 from typing import List
 from typing import Optional
 from typing import Dict
 from typing import Any
 
 from shared import constants
-from shared import config
 from models.expected_sensors import ExpectedSensorsModel
+from models.file_notification import FileNotificationModel
 
 log = logging.getLogger(__name__)
 
@@ -17,18 +18,20 @@ log = logging.getLogger(__name__)
 class AsyncS3Client:
     """Class for interacting with AWS S3 storage"""
 
-    def __init__(self):
-        self.endpoint = self.get_endpoint()
+    def __init__(self, endpoint=None):
+        self.endpoint = self.get_endpoint(endpoint)
         self.session = aioboto3.Session(
             aws_access_key_id=constants.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=constants.AWS_SECRET_ACCESS_KEY,
         )
 
-    def get_endpoint(self):
-        if config.IS_PROD == "True":
+    def get_endpoint(self, endpoint):
+        if endpoint:
+            return endpoint
+        if constants.IS_PROD == "True":
             return constants.S3_ENDPOINT_URL
         else:
-            return "http://localhost:4566"
+            return constants.LOCAL_S3_ENDPOINT
 
     async def list_files(
         self,
@@ -94,6 +97,7 @@ class AsyncS3Client:
         if not target_file:
             log.info(f"S3 client failed to find expected sensors file for bucket: {bucket_name}, prefix: {prefix}")
             return None
+        log.info(f"found {target_file} expected sensors file")
 
         async with self.session.client(
             "s3", endpoint_url=self.endpoint
@@ -101,4 +105,77 @@ class AsyncS3Client:
             response = await s3_client.get_object(Bucket=bucket_name, Key=target_file)
             content = await response["Body"].read()
             sensors_json = json.loads(content.decode("utf-8"))
-            return ExpectedSensorsModel.from_json(sensors_json)
+            if constants.IS_PROD == "True":
+                return ExpectedSensorsModel.from_raw_file(sensors_json)
+            else:
+                return ExpectedSensorsModel.from_json(sensors_json)
+
+    async def get_item_timestamps(
+        self,
+        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+        prefix: Optional[str] = "",
+    ) -> Dict[str, datetime]:
+        """
+        Get timestamps for all items in the bucket that don't end with '_expectedSensors'.
+        Returns a dictionary mapping file keys to their last modified datetime objects in UTC.
+        """
+        timestamps = {}
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint
+        ) as s3_client:
+            paginator = s3_client.get_paginator("list_objects_v2")
+            async for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    # Filter out files ending with '_expectedSensors'
+                    if not key.endswith("_expectedSensors"):
+                        # Store timestamp as datetime object (already in UTC from S3)
+                        timestamps[key] = obj["LastModified"]
+        return timestamps
+
+    async def get_file_content_timestamps(
+        self,
+        bucket_name: str = constants.STORAGE_BUCKET_NAME,
+        prefix: Optional[str] = "",
+    ) -> Dict[str, datetime]:
+        """
+        Get timestamps from the actual JSON file contents for files that don't end with '_expectedSensors'.
+        Uses FileNotificationModel to parse files and extract timestamps.
+        Returns a dictionary mapping file keys to datetime objects in UTC.
+        """
+        content_timestamps = {}
+
+        # First, get list of files to process
+        files_to_process = []
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint
+        ) as s3_client:
+            paginator = s3_client.get_paginator("list_objects_v2")
+            async for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    # Filter out files ending with '_expectedSensors' and only process JSON files
+                    if not key.endswith("_expectedSensors") and key.endswith(".json"):
+                        files_to_process.append(key)
+
+        # Now download and parse each file to extract timestamps
+        async with self.session.client(
+            "s3", endpoint_url=self.endpoint
+        ) as s3_client:
+            for file_key in files_to_process:
+                try:
+                    response = await s3_client.get_object(Bucket=bucket_name, Key=file_key)
+                    content = await response["Body"].read()
+                    data_str = content.decode("utf-8")
+
+                    # Use FileNotificationModel to parse and extract timestamp
+                    notification = FileNotificationModel.from_json(data_str)
+
+                    # Use the model's timestamp property which already handles the first record
+                    content_timestamps[file_key] = notification.timestamp
+
+                except (json.JSONDecodeError, ClientError, Exception) as e:
+                    log.warning(f"Failed to parse timestamps from {file_key}: {e}")
+                    continue
+
+        return content_timestamps

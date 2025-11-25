@@ -29,6 +29,11 @@ from dataclasses_json import dataclass_json, config
 @dataclass(frozen=True, kw_only=True)
 class ExpectedSensorsModel:
     """Expected Sensors Message"""
+    # file_name: str
+    # file_type: str
+    # obs_id: str
+    # version: float
+    # expected_sensors: Dict[str, str]
     file_name: str = field(metadata=config(field_name="fileName"))
     file_type: str = field(metadata=config(field_name="fileType"))
     obs_id: str = field(metadata=config(field_name="obsId"))
@@ -37,6 +42,17 @@ class ExpectedSensorsModel:
 
     SCIENCE = "SCIENCE"
     GUIDER = "GUIDER"
+
+    @classmethod
+    def from_raw_file(cls, file):
+
+        return ExpectedSensorsModel(
+          file_name=file["fileName"],
+          file_type=file["fileType"],
+          obs_id=str(file["obsId"]),
+          version=float(file["version"]),
+          expected_sensors=dict[str,str](file["expectedSensors"]),
+        )
 
     @property
     def storage_key(self):
@@ -48,23 +64,32 @@ class ExpectedSensorsModel:
         image_source, image_controller, image_date, image_number = self.obs_id.split(
             "_"
         )
+        expected_sensor_keys = set()
 
-        return set(
-            f"LSSTCam/{image_date}/{self.obs_id}/{self.obs_id}_{sensor}{ext}"
-            for sensor in sensors
-        )
+        for sensor, sensor_kind in sensors:
+            # if its a guider, then add guider to filename
+            if sensor_kind == self.GUIDER:
+                sensor_key = f"LSSTCam/{image_date}/{self.obs_id}/{self.obs_id}_{sensor}_{self.GUIDER.lower()}{ext}"
+            # otherwise just construct like normal
+            else:
+                sensor_key = f"LSSTCam/{image_date}/{self.obs_id}/{self.obs_id}_{sensor}{ext}"
+            expected_sensor_keys.add(sensor_key)
+
+        return expected_sensor_keys
 
     def get_expected_file_keys(self):
-        sensors = self.expected_sensors.keys()
+        # this doesnt take into account guider files, guider files have _guider'
+        # appended before the .ext
+        sensors = self.expected_sensors.items()
         expected_json_files = self._make_keys(sensors, ".json")
         expected_fits_files = self._make_keys(sensors, ".fits")
         return expected_fits_files, expected_json_files
 
     def get_expected_science_sensors(self):
-        return set(key for key, value in self.expected_sensors.items() if value == self.SCIENCE)
+        return set((key, value) for key, value in self.expected_sensors.items() if value == self.SCIENCE)
 
     def get_expected_guider_sensors(self):
-        return set(key for key, value in self.expected_sensors.items() if value == self.GUIDER)
+        return set((key, value) for key, value in self.expected_sensors.items() if value == self.GUIDER)
 
     def get_expected_science_keys(self):
         science_sensors = self.get_expected_science_sensors()

@@ -7,7 +7,7 @@ from shared.notifications.stores.abstract_notification_store import (
 
 
 class MemoryNotificationStore(AbstractNotificationStore):
-    def __init__(self, maxsize=100_000):
+    def __init__(self, maxsize=100_000_000):
         self.cache = LRUCache(maxsize=maxsize)
         self._lock = asyncio.Lock()
 

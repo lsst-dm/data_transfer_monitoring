@@ -6,7 +6,7 @@ from prometheus_client import Counter
 
 from listeners.base_listener import BaseKafkaListener
 from models.file_notification import FileNotificationModel
-from shared.notifications.notification_tracker import NotificationTracker
+from shared.utils.day_of_observation import get_observation_day
 
 log = logging.getLogger(__name__)
 
@@ -16,22 +16,26 @@ class FileNotificationListener(BaseKafkaListener):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.notification_tracker = NotificationTracker()
         self.time_of_last_message = self.get_initial_time_of_last_message()
         self.total_messages_received = Counter(
-            "dtm_file_messages_received_total", "Total number of file messages received"
+            "dtm_file_messages_received_total",
+            "Total number of file messages received",
+            ["day"]
         )
         self.fits_files_received = Counter(
             "dtm_file_messages_received_fits_total",
             "Total number of .fits file messages received",
+            ["day"]
         )
         self.json_files_received = Counter(
             "dtm_file_messages_received_header_total",
             "Total number of .json header file messages received",
+            ["day"]
         )
         self.file_message_histogram = Histogram(
             "dtm_file_messages_received_seconds",
             "Histogram of file message receive intervals (Seconds)",
+            ["day"],
             buckets=[1, 2, 4, 8, 16],
         )
 
@@ -47,29 +51,35 @@ class FileNotificationListener(BaseKafkaListener):
 
     def record_histogram(self, now: datetime):
         time_since_last_message = now - self.time_of_last_message
-        self.file_message_histogram.observe(time_since_last_message.total_seconds())
+        day_obs = get_observation_day()
+        self.file_message_histogram.labels(day=day_obs).observe(time_since_last_message.total_seconds())
 
     def record_metrics(self, msg: FileNotificationModel):
         now = datetime.now()
+        day_obs = get_observation_day()
 
         if msg.file_type == FileNotificationModel.JSON:
-            self.json_files_received.inc()
+            self.json_files_received.labels(day=day_obs).inc()
 
         if msg.file_type == FileNotificationModel.FITS:
-            self.fits_files_received.inc()
+            self.fits_files_received.labels(day=day_obs).inc()
 
         self.record_histogram(now)
-        self.total_messages_received.inc()
+        self.total_messages_received.labels(day=day_obs).inc()
 
         self.time_of_last_message = now
 
-    async def handle_message(self, msg_obj):
-        log.debug("received file notification message")
-        log.debug(f"file notification json: {msg_obj}")
+    async def handle_message(self, msg_obj, deserializer):
         msg = FileNotificationModel.from_json(msg_obj)
+        log.debug(f"file notification: {msg}")
         if self.should_skip(msg):
             return
-        await self.notification_tracker.add_file_notification(
-            msg.storage_key, msg, msg.file_type
-        )
         self.record_metrics(msg)
+
+    async def handle_batch(self, batch, deserializer):
+        log.debug("received file notification batch")
+        log.debug(f"file notification batch: {batch}")
+        messages = [FileNotificationModel.from_json(msg) for msg in batch]
+        
+        for msg_obj in messages:
+            self.record_metrics(msg_obj)
