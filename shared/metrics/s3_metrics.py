@@ -76,6 +76,24 @@ class S3Metrics:
                 f"as of {now.strftime('%Y-%m-%d %H:%M:%S')} "
                 f"s3 late files: {missing_files}"
             )
+
+            all_expected_science = sensors.get_expected_science_sensors()
+            all_expected_guider = sensors.get_expected_guider_sensors()
+
+            missing_science = set([sensor for sensor in all_expected_science if sensor not in existing_files])
+            missing_guider = set([sensor for sensor in all_expected_guider if sensor not in existing_files])
+            log_msg = (
+                "incomplete end readout:"
+                f" dayobs = {get_observation_day()}"
+                f" image_name = {end_readout.image_name}"
+                f" expect_s={len(all_expected_science)}"
+                f" expect_g={len(all_expected_guider)}"
+                f" found_s={len(all_expected_science - missing_science)}"
+                f" found_g={len(all_expected_guider - missing_guider)}"
+                " SOME MISSING"
+            )
+            log.info(log_msg)
+
             self.s3_late_or_missing.labels(day=day_obs).inc(len(missing_files))
 
     async def record_metrics_from_s3(self, msg: EndReadoutModel):
