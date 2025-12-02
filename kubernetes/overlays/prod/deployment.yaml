@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: data-transfer-monitoring
+  name: data-transfer-monitoring
+  namespace: dtm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-transfer-monitoring
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "8000"
+        prometheus.io/scrape: "true"
+      labels:
+        app: data-transfer-monitoring
+    spec:
+      containers:
+      - env:
+        - name: MAX_FILE_LATE_TIME
+          value: "10"
+        - name: IS_PROD
+          value: "True"
+        - name: DEBUG
+          value: "false"
+        - name: DEBUG_LOGS
+          value: "false"
+        - name: KAFKA_BATCH_TIMEOUT_MS
+          value: "70000"
+        - name: FILE_NOTIFICATION_KAFKA_BOOTSTRAP_SERVERS
+          value: 172.24.10.54:9094
+        - name: FILE_NOTIFICATION_KAFKA_GROUP_ID
+          value: data-transfer-monitor-1
+        - name: FILE_NOTIFICATION_TOPIC_NAME
+          value: rubin-summit-notification-6
+        - name: SHOULD_RUN_END_READOUT_LISTENER
+          value: "True"
+        - name: END_READOUT_KAFKA_BOOTSTRAP_SERVERS
+          value: 172.24.10.20:9094
+        - name: END_READOUT_SCHEMA_REGISTRY
+          value: http://10.96.100.221:8081
+        - name: END_READOUT_TOPIC_NAME
+          value: lsst.sal.MTCamera.logevent_endReadout
+        - name: END_READOUT_KAFKA_GROUP_ID
+          value: data-transfer-monitor-1
+        - name: END_READOUT_SASL_USERNAME
+          value: data-transfer-monitoring
+        - name: END_READOUT_SASL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: usdf-sasquatch-kafka-dtm-password
+              name: dtm-secret
+        - name: END_READOUT_SASL_MECHANISM
+          value: SCRAM-SHA-512
+        - name: END_READOUT_SECURITY_PROTOCOL
+          value: SASL_SSL
+        - name: POSTGRES_CONNECTION_STRING
+          value: empty
+        - name: STORAGE_BUCKET_NAME
+          value: rubin-summit
+        - name: S3_ENDPOINT_URL
+          value: https://sdfembs3.sdf.slac.stanford.edu
+        - name: EXPECTED_SENSORS_FILENAME
+          value: expectedSensors.json
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              key: summit-s3-read-only-access-key
+              name: dtm-secret
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: summit-s3-read-only-secret-key
+              name: dtm-secret
+        image: ghcr.io/lsst-dm/data_transfer_monitoring:main
+        imagePullPolicy: IfNotPresent
+        name: data-transfer-monitoring
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "128Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

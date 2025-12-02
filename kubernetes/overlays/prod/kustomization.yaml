@@ -1,0 +1,14 @@
+namespace: dtm
+
+resources:
+- ns.yaml
+- deployment.yaml
+
+secretGenerator:
+- name: dtm-secret
+  options:
+    disableNameSuffixHash: true
+  files:
+  - etc/.secrets/usdf-sasquatch-kafka-dtm-password
+  - etc/.secrets/summit-s3-read-only-access-key
+  - etc/.secrets/summit-s3-read-only-secret-key
