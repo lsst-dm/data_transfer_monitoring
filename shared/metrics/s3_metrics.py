@@ -24,7 +24,7 @@ class S3Metrics:
             "dtm_s3_transfer_duration_seconds",
             "S3 transfer duration in seconds (from EndReadout timestamp to oldest S3 file)",
             ["day"],  # add day as a label
-            buckets=(0.5, 1, 2.5, 5, 10, 30, 60, 120, 300)
+            buckets=(3, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25, 30, 45, 60)
         )
 
         self.s3_late_or_missing = Counter(
