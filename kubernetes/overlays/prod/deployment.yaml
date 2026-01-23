@@ -39,7 +39,7 @@ spec:
         - name: SHOULD_RUN_END_READOUT_LISTENER
           value: "True"
         - name: END_READOUT_KAFKA_BOOTSTRAP_SERVERS
-          value: 172.24.10.20:9094
+          value: 172.24.10.13:9094
         - name: END_READOUT_SCHEMA_REGISTRY
           value: http://10.96.100.221:8081
         - name: END_READOUT_TOPIC_NAME
